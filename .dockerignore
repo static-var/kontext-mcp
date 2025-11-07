@@ -1,0 +1,12 @@
+.git
+.gitignore
+.gradle
+**/build
+**/.idea
+**/*.iml
+tmp-gradle
+tmp_app.js
+tmp
+docker-compose.override.yml
+.DS_Store
+README.md~
