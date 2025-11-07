@@ -1,0 +1,110 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mcp-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-mcp_db}
+      POSTGRES_USER: ${DB_USER:-mcp_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mcp_password}
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mcp_user} -d ${DB_NAME:-mcp_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mcp-network
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mcp-server
+    container_name: mcp-server
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-mcp_db}
+      DB_USER: ${DB_USER:-mcp_user}
+      DB_PASSWORD: ${DB_PASSWORD:-mcp_password}
+      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-/app/models/bge-large-en-v1.5}
+      MODEL_CACHE_DIR: /app/models
+      APP_CONFIG_PATH: /app/config/application.conf
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - model_cache:/app/models
+      - ./config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mcp-network
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4g
+        reservations:
+          cpus: "1.0"
+          memory: 2g
+
+  crawler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.crawler
+    container_name: mcp-crawler
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-mcp_db}
+      DB_USER: ${DB_USER:-mcp_user}
+      DB_PASSWORD: ${DB_PASSWORD:-mcp_password}
+      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-/app/models/bge-large-en-v1.5}
+      MODEL_CACHE_DIR: /app/models
+      APP_CONFIG_PATH: /app/config/application.conf
+      CRAWLER_MODE: ${CRAWLER_MODE:-daemon}
+      CRON_SCHEDULE: ${CRON_SCHEDULE:-0 0 * * *}
+      CRAWLER_PORT: ${CRAWLER_PORT:-8080}
+      CRAWLER_AUTH_USERNAME: ${CRAWLER_AUTH_USERNAME:-admin}
+      CRAWLER_AUTH_PASSWORD_BCRYPT: ${CRAWLER_AUTH_PASSWORD_BCRYPT:-$2a$12$zgLQbn7GZlf1qnUxQuFQ8OzM.NMBvvXVbh3S7gi934P1OxNmVP9xW}
+      CRAWLER_SESSION_SECRET: ${CRAWLER_SESSION_SECRET:-replace-with-32-byte-secret}
+      CRAWLER_INDEXER_BASE_URL: ${CRAWLER_INDEXER_BASE_URL:-http://mcp-server:8081}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - model_cache:/app/models
+      - ./config:/app/config:ro
+    ports:
+      - "${CRAWLER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2g
+        reservations:
+          cpus: "0.5"
+          memory: 1g
+
+volumes:
+  postgres_data:
+    driver: local
+  model_cache:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge
