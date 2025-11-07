@@ -86,12 +86,12 @@ fun Route.apiRoutes(services: CrawlerServices) {
 
     post("/urls") {
         val payload = if (call.request.contentType().match(ContentType.Application.Json)) {
-            call.receive<UrlPayload>()
+            call.receive<UrlPayload>().normalize()
         } else {
             val params = call.receiveParameters()
             UrlPayload(
                 url = params["url"].orEmpty(),
-                parserType = params["parserType"]
+                parserType = params["parserType"].takeUnless { it.isNullOrBlank() }
             )
         }
 
@@ -100,7 +100,7 @@ fun Route.apiRoutes(services: CrawlerServices) {
             return@post
         }
 
-        val parserType = payload.parserType?.let { value ->
+        val parserType = payload.parserType?.takeUnless { it.isBlank() }?.let { value ->
             runCatching { ParserType.valueOf(value) }.getOrNull()
         }
 
@@ -143,6 +143,10 @@ private data class UrlPayload(
     val etag: String? = null,
     val lastModified: String? = null,
     val errorMessage: String? = null
+)
+
+private fun UrlPayload.normalize(): UrlPayload = copy(
+    parserType = parserType?.takeUnless { it.isBlank() }
 )
 
 @Serializable
