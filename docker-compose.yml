@@ -78,9 +78,9 @@ services:
       CRAWLER_MODE: ${CRAWLER_MODE:-daemon}
       CRON_SCHEDULE: ${CRON_SCHEDULE:-0 0 * * *}
       CRAWLER_PORT: ${CRAWLER_PORT:-8080}
-      CRAWLER_AUTH_USERNAME: ${CRAWLER_AUTH_USERNAME:-admin}
-      # Escape $ in default bcrypt hash so Compose doesn't treat segments as env vars
-      CRAWLER_AUTH_PASSWORD_BCRYPT: ${CRAWLER_AUTH_PASSWORD_BCRYPT:-$2a$12$06vsdjh2sVMhSfwi2OWWKuPnoYIZlTioVT/lL4A8gZLZrm1p/0fL2}
+      # Credentials must be provided via .env to avoid hardcoding secrets in compose
+      CRAWLER_AUTH_USERNAME: ${CRAWLER_AUTH_USERNAME:?set in .env}
+      CRAWLER_AUTH_PASSWORD_BCRYPT: ${CRAWLER_AUTH_PASSWORD_BCRYPT:?set in .env}
       CRAWLER_SESSION_SECRET: ${CRAWLER_SESSION_SECRET:-replace-with-32-byte-secret}
       CRAWLER_INDEXER_BASE_URL: ${CRAWLER_INDEXER_BASE_URL:-http://mcp-server:8081}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
