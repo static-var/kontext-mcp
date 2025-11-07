@@ -1,0 +1,122 @@
+[
+  {
+    "query": "How to use LaunchedEffect in Jetpack Compose?",
+    "expectedKeywords": ["LaunchedEffect", "Compose", "side effect"],
+    "minSimilarity": 0.80
+  },
+  {
+    "query": "When should I choose rememberSaveable vs remember?",
+    "expectedKeywords": ["rememberSaveable", "remember", "state restore"],
+    "minSimilarity": 0.78
+  },
+  {
+    "query": "Flow vs Channel differences",
+    "expectedKeywords": ["Flow", "Channel", "hot", "cold"],
+    "minSimilarity": 0.75
+  },
+  {
+    "query": "Collecting StateFlow safely in Compose",
+    "expectedKeywords": ["StateFlow", "collectAsState", "Compose"],
+    "minSimilarity": 0.76
+  },
+  {
+    "query": "Setup Room database with Kotlin coroutines",
+    "expectedKeywords": ["Room", "coroutines", "suspend dao"],
+    "minSimilarity": 0.77
+  },
+  {
+    "query": "Handle unique work with WorkManager",
+    "expectedKeywords": ["WorkManager", "unique work", "ExistingWorkPolicy"],
+    "minSimilarity": 0.74
+  },
+  {
+    "query": "Compose Navigation deep link handling",
+    "expectedKeywords": ["NavHost", "deep link", "Compose"],
+    "minSimilarity": 0.79
+  },
+  {
+    "query": "Create custom Layout in Compose",
+    "expectedKeywords": ["Layout", "MeasureScope", "Placement"],
+    "minSimilarity": 0.78
+  },
+  {
+    "query": "Difference between LiveData and Flow",
+    "expectedKeywords": ["LiveData", "Flow", "lifecycle"],
+    "minSimilarity": 0.75
+  },
+  {
+    "query": "Kotlin sealed classes use cases",
+    "expectedKeywords": ["sealed class", "when exhaustive"],
+    "minSimilarity": 0.72
+  },
+  {
+    "query": "Kotlin inline function benefits",
+    "expectedKeywords": ["inline", "lambda allocation", "crossinline"],
+    "minSimilarity": 0.73
+  },
+  {
+    "query": "Handle coroutine exceptions with CoroutineExceptionHandler",
+    "expectedKeywords": ["CoroutineExceptionHandler", "supervisor"],
+    "minSimilarity": 0.76
+  },
+  {
+    "query": "Paging 3 remote mediator caching",
+    "expectedKeywords": ["Paging 3", "RemoteMediator", "cache"],
+    "minSimilarity": 0.77
+  },
+  {
+    "query": "Testing suspend functions with runTest",
+    "expectedKeywords": ["runTest", "TestScope", "suspend"],
+    "minSimilarity": 0.74
+  },
+  {
+    "query": "Use DataStore preferences API",
+    "expectedKeywords": ["DataStore", "preferences", "Flow"],
+    "minSimilarity": 0.74
+  },
+  {
+    "query": "Understand Compose recomposition rules",
+    "expectedKeywords": ["recomposition", "snapshot", "state"],
+    "minSimilarity": 0.8
+  },
+  {
+    "query": "Kotlin Multiplatform expect actual usage",
+    "expectedKeywords": ["expect", "actual", "multiplatform"],
+    "minSimilarity": 0.73
+  },
+  {
+    "query": "Android Foreground service notification channel",
+    "expectedKeywords": ["foreground service", "notification channel"],
+    "minSimilarity": 0.76
+  },
+  {
+    "query": "Compose LazyColumn performance tips",
+    "expectedKeywords": ["LazyColumn", "remember", "derivedStateOf"],
+    "minSimilarity": 0.79
+  },
+  {
+    "query": "Kotlin DSL builder pattern example",
+    "expectedKeywords": ["DSL", "lambda receiver", "builder"],
+    "minSimilarity": 0.72
+  },
+  {
+    "query": "Use SavedStateHandle inside ViewModel",
+    "expectedKeywords": ["SavedStateHandle", "ViewModel", "state"],
+    "minSimilarity": 0.75
+  },
+  {
+    "query": "Kotlin Flow debounce operator",
+    "expectedKeywords": ["Flow", "debounce", "operator"],
+    "minSimilarity": 0.74
+  },
+  {
+    "query": "Compose snapshotFlow use cases",
+    "expectedKeywords": ["snapshotFlow", "state snapshot", "Compose"],
+    "minSimilarity": 0.78
+  },
+  {
+    "query": "CameraX preview setup",
+    "expectedKeywords": ["CameraX", "PreviewView", "Lifecycle"],
+    "minSimilarity": 0.73
+  }
+]
