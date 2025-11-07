@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
 
 COPY gradlew gradlew
@@ -12,7 +12,7 @@ COPY config config
 RUN chmod +x gradlew
 RUN ./gradlew --no-daemon :modules:crawler:installDist
 
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:17-jre AS runtime
 ENV APP_HOME=/opt/mcp-crawler \
     MODEL_CACHE_DIR=/app/models \
     APP_CONFIG_PATH=/app/config/application.conf \
@@ -23,6 +23,7 @@ COPY --from=build /workspace/modules/crawler/build/install/crawler ./
 COPY config ${APP_HOME}/config
 COPY docker/entrypoint-crawler.sh /usr/local/bin/entrypoint.sh
 COPY docker/healthcheck-crawler.sh /usr/local/bin/healthcheck.sh
+COPY .env ${APP_HOME}/.env
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl procps \

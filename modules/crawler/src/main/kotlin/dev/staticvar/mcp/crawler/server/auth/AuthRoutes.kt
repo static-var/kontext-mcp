@@ -85,12 +85,25 @@ fun Route.authRoutes(config: CrawlerConfig.AuthConfig) {
 fun Route.protectedRoutes(onUnauthorized: suspend ApplicationCall.() -> Unit = { respondRedirect("/login") }, block: Route.() -> Unit) {
     route("") {
         intercept(ApplicationCallPipeline.Plugins) {
-            val session = call.sessions.get<CrawlerSession>()
-            if (session == null) {
-                onUnauthorized(call)
-                finish()
-            } else {
-                call.attributes.put(CurrentSessionKey, session)
+            // Allowlist paths that must remain publicly accessible to avoid redirect loops
+            // and to expose health endpoints without authentication.
+            val path = call.request.path()
+            val isPublic = when {
+                path == "/login" -> true
+                path == "/logout" -> true
+                path == "/healthz" -> true
+                path == "/" -> true
+                else -> false
+            }
+
+            if (!isPublic) {
+                val session = call.sessions.get<CrawlerSession>()
+                if (session == null) {
+                    onUnauthorized(call)
+                    finish()
+                } else {
+                    call.attributes.put(CurrentSessionKey, session)
+                }
             }
         }
         block()
