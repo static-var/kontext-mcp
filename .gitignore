@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+*/build/
+!.gradle/gradle.properties
+
+# IntelliJ / Android Studio / VSCode
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+tmp/
+tmp-gradle/
+tmp_app.js
+
+# Docker artifacts
+docker/*.pid
+docker/*.log
+
+# Local overrides
+.env
+*.local.*
+.kontext-setup.conf.local
