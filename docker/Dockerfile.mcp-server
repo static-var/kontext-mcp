@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
 
 COPY gradlew gradlew
@@ -12,7 +12,7 @@ COPY config config
 RUN chmod +x gradlew
 RUN ./gradlew --no-daemon :modules:mcp-server:installDist
 
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:17-jre AS runtime
 ENV APP_HOME=/opt/mcp-server \
     MODEL_CACHE_DIR=/app/models \
     APP_CONFIG_PATH=/app/config/application.conf \
