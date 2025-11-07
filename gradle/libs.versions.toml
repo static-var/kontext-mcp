@@ -1,0 +1,140 @@
+# Version Catalog for Android Kotlin MCP Project
+# Centralized dependency management following Gradle best practices
+
+[versions]
+# Kotlin & Coroutines (as of November 2025)
+kotlin = "2.2.21"  # Latest stable (Nov 2025)
+kotlinx-coroutines = "1.10.2"  # Latest stable
+kotlinx-serialization = "1.9.0"  # Latest stable
+kotlinx-datetime = "0.7.1"  # Latest stable (July 2025)
+kotlinx-io = "0.8.0"  # Matches MCP SDK requirement
+
+# Ktor (Server & Client)
+ktor = "3.2.3"  # Align with MCP Kotlin SDK BOM
+
+# Database
+postgresql = "42.7.8"  # Latest stable (Sept 2025)
+pgvector = "0.1.6"  # Latest stable
+hikaricp = "7.0.2"  # Latest stable
+exposed = "1.0.0-rc-2"  # Latest RC with v1 API
+flyway = "11.15.0"  # Latest stable (Oct 2025)
+
+# MCP
+mcp-kotlin-sdk = "0.7.5"  # Kotlin MCP SDK latest stable (Nov 2025)
+
+# Embedding & ML
+onnx-runtime = "1.21.1"  # Latest stable
+djl-tokenizers = "0.31.0"  # Verify latest from Maven Central
+jtokkit = "1.1.0"  # Verify latest from Maven Central
+
+# Parsing
+jsoup = "1.21.2"  # Latest stable (Aug 2025)
+markdown = "0.7.3"  # Verify latest from Maven Central
+
+# CLI & Scheduling
+clikt = "5.0.3"  # Latest stable
+krontab = "2.5.1"  # Verify latest from Maven Central
+typesafe-config = "1.4.3"  # Stable (no updates)
+bcrypt = "0.10.2"  # at.favre bcrypt implementation
+
+# Logging
+kotlin-logging = "7.0.13"  # Align with MCP SDK runtime dependency
+logback = "1.5.20"  # Latest stable (1.5.x series)
+
+# Testing
+junit = "5.11.4"  # Verify latest from Maven Central
+mockk = "1.14.6"  # Latest stable (Oct 2025)
+testcontainers = "1.20.4"  # Verify latest from Maven Central
+
+[libraries]
+# Kotlin
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kotlinx-io-core-jvm = { module = "org.jetbrains.kotlinx:kotlinx-io-core-jvm", version.ref = "kotlinx-io" }
+
+# Ktor Server
+ktorServerCore = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktorServerCio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktorServerNetty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktorServerContentNegotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktorServerAuth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
+ktorServerSessions = { module = "io.ktor:ktor-server-sessions", version.ref = "ktor" }
+ktorServerHtmlBuilder = { module = "io.ktor:ktor-server-html-builder", version.ref = "ktor" }
+ktorServerStatusPages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
+ktorServerCallLogging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
+ktorSerializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktorSerializationKotlinx = { module = "io.ktor:ktor-serialization-kotlinx", version.ref = "ktor" }
+ktorServerSse = { module = "io.ktor:ktor-server-sse", version.ref = "ktor" }
+
+# Ktor Client
+ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktorClientCio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktorClientLogging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+
+# Database
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+# MCP
+mcp-kotlin-sdk = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcp-kotlin-sdk" }
+
+# Embedding & ML
+onnx-runtime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnx-runtime" }
+djl-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djl-tokenizers" }
+jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
+
+# Parsing
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+markdown = { module = "org.jetbrains:markdown", version.ref = "markdown" }
+
+# CLI & Config
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+krontab = { module = "dev.inmo:krontab", version.ref = "krontab" }
+typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-config" }
+bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
+
+# Logging
+kotlin-logging = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlin-logging" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+# Testing
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+
+[bundles]
+# Convenience bundles for common dependency groups
+ktor-server = [
+    "ktorServerCore",
+    "ktorServerNetty",
+    "ktorServerContentNegotiation",
+    "ktorServerAuth",
+    "ktorServerSessions",
+    "ktorServerHtmlBuilder",
+    "ktorServerStatusPages",
+    "ktorServerCallLogging",
+    "ktorSerializationKotlinxJson"
+]
+ktor-client = ["ktorClientCore", "ktorClientCio", "ktorClientLogging"]
+exposed = ["exposed-core", "exposed-dao", "exposed-jdbc", "exposed-kotlin-datetime"]
+flyway = ["flyway-core", "flyway-postgresql"]
+database = ["postgresql", "pgvector", "hikaricp"]
+logging = ["kotlin-logging", "logback-classic"]
+testing = ["kotlin-test", "kotlinx-coroutines-test"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
