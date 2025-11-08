@@ -12,7 +12,9 @@ data class CrawlerConfig(
 ) {
     data class AuthConfig(
         val username: String,
-        val passwordBcrypt: String
+        val passwordBcrypt: String,
+        val tokenSecret: String,
+        val tokenTtlSeconds: Long
     )
 
     data class SessionConfig(
@@ -29,14 +31,8 @@ data class CrawlerConfig(
     companion object {
         fun load(config: ApplicationConfig): CrawlerConfig {
             val crawlerConfig = config.config("crawler")
-            val authConfig = crawlerConfig.config("auth")
             val sessionConfig = crawlerConfig.config("session")
             val indexerConfig = crawlerConfig.config("indexer")
-
-            val auth = AuthConfig(
-                username = authConfig.property("username").getString(),
-                passwordBcrypt = authConfig.property("password-bcrypt").getString()
-            )
 
             val session = SessionConfig(
                 secret = sessionConfig.property("secret").getString(),
@@ -46,6 +42,17 @@ data class CrawlerConfig(
                     ?: false,
                 maxAgeSeconds = sessionConfig.propertyOrNull("max-age-seconds")?.getString()?.toLongOrNull()
                     ?: 3 * 60 * 60L
+            )
+
+            val authConfig = crawlerConfig.config("auth")
+
+            val auth = AuthConfig(
+                username = authConfig.property("username").getString(),
+                passwordBcrypt = authConfig.property("password-bcrypt").getString(),
+                tokenSecret = authConfig.propertyOrNull("token-secret")?.getString()
+                    ?: session.secret,
+                tokenTtlSeconds = authConfig.propertyOrNull("token-ttl-seconds")?.getString()?.toLongOrNull()
+                    ?: 3600L
             )
 
             val indexer = IndexerConfig(

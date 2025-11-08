@@ -110,6 +110,7 @@ To execute just the evaluation suite:
 * `config/application.conf` holds base settings with `${?ENV_VAR}` overrides; copy/modify for local use.
 * Crawler-specific configuration (auth, session, indexer base URL) lives in `modules/crawler/src/main/resources/application.conf`.
 * The MCP server and crawler both honor `APP_CONFIG_PATH` to point at custom configs.
+* The crawler's protected HTTP API issues JWT bearer tokens via `POST /login` when you send JSON credentials; reuse that token in `Authorization: Bearer <token>` headers for scripted clients.
 
 ---
 

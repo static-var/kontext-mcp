@@ -1,6 +1,7 @@
 package dev.staticvar.mcp.crawler.server
 
 import dev.staticvar.mcp.crawler.server.auth.CrawlerSession
+import dev.staticvar.mcp.crawler.server.auth.JwtTokenProvider
 import dev.staticvar.mcp.crawler.server.auth.authRoutes
 import dev.staticvar.mcp.crawler.server.auth.protectedRoutes
 import dev.staticvar.mcp.crawler.server.config.CrawlerConfig
@@ -26,6 +27,10 @@ fun Application.crawlerModule(
     config: CrawlerConfig,
     services: CrawlerServices
 ) {
+    val tokenProvider = JwtTokenProvider(
+        secret = config.auth.tokenSecret,
+        tokenTtlSeconds = config.auth.tokenTtlSeconds
+    )
     install(ContentNegotiation) {
         json(
             Json {
@@ -81,9 +86,9 @@ fun Application.crawlerModule(
             call.respond(HttpStatusCode.OK, mapOf("status" to state))
         }
 
-        authRoutes(config.auth)
+        authRoutes(config.auth, tokenProvider)
 
-        protectedRoutes(onUnauthorized = {
+        protectedRoutes(tokenProvider, onUnauthorized = {
             if (wantsJson()) {
                 respond(HttpStatusCode.Unauthorized, mapOf("error" to "authentication required"))
             } else {

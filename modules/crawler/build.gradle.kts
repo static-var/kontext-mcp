@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.typesafe.config)
+    implementation(libs.auth0.jwt)
 
     // Scheduling
     implementation(libs.krontab)

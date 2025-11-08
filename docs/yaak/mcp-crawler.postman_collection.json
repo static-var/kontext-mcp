@@ -1,0 +1,91 @@
+{
+  "info": {
+    "name": "MCP Crawler Admin",
+    "description": "Basic authenticated endpoints for the MCP crawler dashboard. Import into Yaak as a Postman v2.1 collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{crawlerUsername}}\",\n  \"password\": \"{{crawlerPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/login",
+        "description": "Exchange dashboard credentials for a session cookie or API token. When calling with JSON, the response includes a Bearer token; copy its value into the authToken variable for subsequent API calls."
+      },
+      "response": []
+    },
+    {
+      "name": "Crawler - List URLs",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/urls",
+        "description": "Return every registered source URL plus crawl status metadata. Requires an authenticated session cookie."
+      },
+      "response": []
+    },
+    {
+      "name": "Crawler - Add Source URL",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"url\": \"{{sourceUrl}}\",\n  \"parserType\": \"{{parserType}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/urls",
+        "description": "Queue a new URL for crawling. Leave parserType blank to auto-detect (set an empty string)."
+      },
+      "response": []
+    },
+    {
+      "name": "Crawler - Trigger Crawl",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/crawl/start",
+        "description": "Manually start the crawl executor. Returns Accepted when a new job is queued."
+      },
+      "response": []
+    },
+    {
+      "name": "Crawler - Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/crawl/status",
+        "description": "Current crawl snapshot (idle, running, or completed)."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "crawlerUsername", "value": "admin" },
+    { "key": "crawlerPassword", "value": "changeme" },
+    { "key": "authToken", "value": "" },
+    { "key": "sourceUrl", "value": "https://developer.android.com/docs" },
+    { "key": "parserType", "value": "ANDROID_DOCS" }
+  ]
+}
