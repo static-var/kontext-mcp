@@ -1,5 +1,7 @@
 # MCP Kontext
 
+> **Status:** Work in Progress – interfaces and deployment flows may change.
+
 MCP Kontext (“Kontext” for short) is a Retrieval-Augmented-Generation stack tailored for Android & Kotlin documentation.  
 It ships as a Gradle monorepo with modular services so you can crawl doc sources, embed & index them in PostgreSQL/pgvector, and expose them as an MCP server (stdio transport) or via the crawler’s Ktor web UI.
 
@@ -121,7 +123,7 @@ To execute just the evaluation suite:
 | Phase 1 – Foundation | ✅ | Completed |
 | Phase 2 – Core Infrastructure | ✅ | Indexer/Parser/Embedder ready |
 | Phase 3 – Services | ✅ | Error handling + retry logic, crawler & MCP server live |
-| Phase 4 – Deployment | ✅ | Dockerfiles, compose stack, deployment docs |
+| Phase 4 – Deployment | ⏳ | Dockerfiles, compose stack, deployment docs |
 | Phase 5 – Testing | ⚙️ | Dataset + metrics + E2E harness done; performance tuning deferred to post-deploy |
 | Phase 6 – Enhancements | 🔜 | (Future) |
 
