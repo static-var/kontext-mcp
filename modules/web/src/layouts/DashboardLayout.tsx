@@ -1,8 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, Search, Settings, LogOut, Database } from 'lucide-react';
+import { LayoutDashboard, Search, Settings, LogOut, Database, ListPlus, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export type DashboardSection = 'search' | 'overview' | 'settings';
+export type DashboardSection = 'search' | 'overview' | 'settings' | 'queue' | 'activity';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -48,6 +48,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         label="Settings"
                         active={activeSection === 'settings'}
                         onClick={() => onSectionChange('settings')}
+                    />
+                    <NavItem
+                        icon={<ListPlus className="h-5 w-5" />}
+                        label="Queue URLs"
+                        active={activeSection === 'queue'}
+                        onClick={() => onSectionChange('queue')}
+                    />
+                    <NavItem
+                        icon={<Activity className="h-5 w-5" />}
+                        label="Crawler state"
+                        active={activeSection === 'activity'}
+                        onClick={() => onSectionChange('activity')}
                     />
                 </nav>
 

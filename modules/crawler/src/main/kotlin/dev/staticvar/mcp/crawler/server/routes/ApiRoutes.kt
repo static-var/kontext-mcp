@@ -7,6 +7,7 @@ import dev.staticvar.mcp.crawler.server.service.CrawlStatusSnapshot
 import dev.staticvar.mcp.crawler.server.service.CrawlerServices
 import dev.staticvar.mcp.crawler.server.service.SourceUrlRecord
 import dev.staticvar.mcp.crawler.server.service.UpsertScheduleRequest
+import dev.staticvar.mcp.shared.model.CrawlStatus
 import dev.staticvar.mcp.shared.model.ParserType
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -14,6 +15,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
+import kotlin.time.toEpochMilliseconds
 
 fun Route.apiRoutes(services: CrawlerServices) {
     post("/crawl/start") {
@@ -29,6 +31,31 @@ fun Route.apiRoutes(services: CrawlerServices) {
     get("/crawl/status") {
         val status = services.status.snapshot()
         call.respond(HttpStatusCode.OK, status.toResponse())
+    }
+
+    get("/crawl/insights") {
+        val snapshot = services.status.snapshot().toResponse()
+        val urls = services.sources.list()
+
+        val insights =
+            urls
+                .sortedWith(
+                    compareByDescending<SourceUrlRecord> { it.status == CrawlStatus.IN_PROGRESS }
+                        .thenByDescending { it.lastCrawled?.toEpochMilliseconds() ?: Long.MIN_VALUE },
+                )
+                .take(50)
+                .map { it.toInsightPayload() }
+
+        val summary = urls.toQueueSummary()
+
+        call.respond(
+            HttpStatusCode.OK,
+            CrawlerInsightsPayload(
+                status = snapshot,
+                queueSummary = summary,
+                recentSources = insights,
+            ),
+        )
     }
 
     post("/crawl/schedule") {
@@ -149,6 +176,56 @@ fun Route.apiRoutes(services: CrawlerServices) {
         }
     }
 
+    post("/urls/bulk") {
+        if (!call.isJsonRequest()) {
+            call.respond(
+                HttpStatusCode.UnsupportedMediaType,
+                mapOf("error" to "Use application/json for bulk requests"),
+            )
+            return@post
+        }
+
+        val payload = call.receiveJsonOrNull<BulkUrlPayload>() ?: return@post
+        val entries = payload.entries.map { it.normalize() }.filter { it.url.isNotBlank() }
+        if (entries.isEmpty()) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No URLs supplied"))
+            return@post
+        }
+
+        val successes = mutableListOf<UrlPayload>()
+        val failures = mutableListOf<BulkUrlFailure>()
+
+        for (entry in entries) {
+            val parserType =
+                entry.parserType?.let { raw ->
+                    runCatching { ParserType.valueOf(raw) }
+                        .getOrElse {
+                            failures += BulkUrlFailure(entry.url, "Invalid parser type: $raw")
+                            null
+                        }
+                }
+
+            if (entry.parserType != null && parserType == null) {
+                continue
+            }
+
+            try {
+                val record =
+                    services.sources.add(
+                        AddSourceUrlRequest(
+                            url = entry.url,
+                            parserType = parserType,
+                        ),
+                    )
+                successes += record.toPayload()
+            } catch (ex: Exception) {
+                failures += BulkUrlFailure(entry.url, ex.message ?: "Failed to enqueue")
+            }
+        }
+
+        call.respond(HttpStatusCode.OK, BulkUrlResponse(successes = successes, failures = failures))
+    }
+
     delete("/urls/{id}") {
         val id = call.parameters["id"].orEmpty()
         val removed = services.sources.remove(id)
@@ -157,6 +234,11 @@ fun Route.apiRoutes(services: CrawlerServices) {
         } else {
             call.respond(HttpStatusCode.OK, mapOf("status" to "deleted"))
         }
+    }
+
+    get("/meta/parsers") {
+        val parsers = ParserType.entries.map { it.name }
+        call.respond(HttpStatusCode.OK, parsers)
     }
 }
 
@@ -181,8 +263,24 @@ private data class UrlPayload(
 
 private fun UrlPayload.normalize(): UrlPayload =
     copy(
+        url = url.trim(),
         parserType = parserType?.takeUnless { it.isBlank() },
     )
+
+@Serializable
+private data class BulkUrlPayload(val entries: List<UrlPayload>)
+
+@Serializable
+private data class BulkUrlResponse(
+    val successes: List<UrlPayload>,
+    val failures: List<BulkUrlFailure>,
+)
+
+@Serializable
+private data class BulkUrlFailure(
+    val url: String,
+    val reason: String,
+)
 
 @Serializable
 private data class CrawlStatusResponse(
@@ -195,6 +293,34 @@ private data class CrawlTriggerResponse(
     val accepted: Boolean,
     val jobId: String?,
     val message: String?,
+)
+
+@Serializable
+private data class QueueSummaryPayload(
+    val total: Int,
+    val pending: Int,
+    val inProgress: Int,
+    val success: Int,
+    val failed: Int,
+    val disabled: Int,
+)
+
+@Serializable
+private data class CrawlerInsightsPayload(
+    val status: CrawlStatusResponse,
+    val queueSummary: QueueSummaryPayload,
+    val recentSources: List<SourceInsightPayload>,
+)
+
+@Serializable
+private data class SourceInsightPayload(
+    val id: Int,
+    val url: String,
+    val parserType: String,
+    val status: String,
+    val lastCrawled: String?,
+    val embeddingReady: Boolean,
+    val errorMessage: String?,
 )
 
 private fun CrawlStatusSnapshot.toResponse(): CrawlStatusResponse =
@@ -256,6 +382,34 @@ private fun dev.staticvar.mcp.crawler.server.service.CrawlTriggerResult.toRespon
         accepted = accepted,
         jobId = jobId,
         message = message,
+    )
+
+private fun List<SourceUrlRecord>.toQueueSummary(): QueueSummaryPayload {
+    val pending = count { it.status == CrawlStatus.PENDING }
+    val inProgress = count { it.status == CrawlStatus.IN_PROGRESS }
+    val success = count { it.status == CrawlStatus.SUCCESS }
+    val failed = count { it.status == CrawlStatus.FAILED }
+    val disabled = count { it.status == CrawlStatus.DISABLED }
+
+    return QueueSummaryPayload(
+        total = size,
+        pending = pending,
+        inProgress = inProgress,
+        success = success,
+        failed = failed,
+        disabled = disabled,
+    )
+}
+
+private fun SourceUrlRecord.toInsightPayload(): SourceInsightPayload =
+    SourceInsightPayload(
+        id = id,
+        url = url,
+        parserType = parserType.name,
+        status = status.name,
+        lastCrawled = lastCrawled?.toString(),
+        embeddingReady = status == CrawlStatus.SUCCESS && lastCrawled != null,
+        errorMessage = errorMessage,
     )
 
 private fun ApplicationCall.isJsonRequest(): Boolean = request.contentType().withoutParameters().match(ContentType.Application.Json)

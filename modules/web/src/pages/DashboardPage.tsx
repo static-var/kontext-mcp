@@ -4,6 +4,8 @@ import { SearchBar } from '../components/SearchBar';
 import { SearchResults, type SearchResult } from '../components/SearchResults';
 import { Settings, ShieldAlert, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { QueuePage } from './QueuePage';
+import { CrawlerInsightsPage } from './CrawlerInsightsPage';
 
 // Mock data for demonstration
 const MOCK_RESULTS: SearchResult[] = [
@@ -72,6 +74,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
                 return <OverviewPanel />;
             case 'settings':
                 return <SettingsPanel />;
+            case 'queue':
+                return <QueuePage />;
+            case 'activity':
+                return <CrawlerInsightsPage />;
             default:
                 return (
                     <SearchSection
