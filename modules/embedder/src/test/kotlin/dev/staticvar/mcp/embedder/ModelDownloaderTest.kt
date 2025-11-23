@@ -5,7 +5,6 @@ import dev.staticvar.mcp.shared.config.EmbeddingConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
-import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlin.io.path.createTempDirectory
@@ -84,5 +83,83 @@ class ModelDownloaderTest {
         assertTrue(artifacts.tokenizerFile.toFile().exists())
         assertEquals(modelBytes, artifacts.modelFile.toFile().readText())
         assertEquals(tokenizerBytes, artifacts.tokenizerFile.toFile().readText())
+    }
+
+    @Test
+    fun `downloads quantized model when requested`() = runTest {
+        val tempDir = createTempDirectory()
+        val repoId = "Test/RepoQuantized"
+        val modelBytes = "quantized-model"
+        val tokenizerBytes = """{"tokenizer": "test"}"""
+
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath.endsWith("/model_quantized.onnx") -> respond(
+                    content = modelBytes,
+                    status = HttpStatusCode.OK
+                )
+                request.url.encodedPath.endsWith("/tokenizer.json") -> respond(
+                    content = tokenizerBytes,
+                    status = HttpStatusCode.OK
+                )
+                else -> respond("Not found", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = HttpClient(engine)
+        val downloader = ModelDownloader(client)
+
+        val config = EmbeddingConfig(
+            modelPath = repoId,
+            modelCacheDir = tempDir.toString(),
+            dimension = 2,
+            batchSize = 1,
+            maxTokens = 4,
+            quantized = true
+        )
+
+        val artifacts = downloader.ensureArtifacts(config)
+
+        assertTrue(artifacts.modelFile.fileName.toString() == "model_quantized.onnx")
+        assertEquals(modelBytes, artifacts.modelFile.toFile().readText())
+    }
+
+    @Test
+    fun `uses custom model filename`() = runTest {
+        val tempDir = createTempDirectory()
+        val repoId = "Test/RepoCustom"
+        val modelBytes = "custom-model"
+        val tokenizerBytes = """{"tokenizer": "test"}"""
+
+        val engine = MockEngine { request ->
+            when {
+                request.url.encodedPath.endsWith("/custom.onnx") -> respond(
+                    content = modelBytes,
+                    status = HttpStatusCode.OK
+                )
+                request.url.encodedPath.endsWith("/tokenizer.json") -> respond(
+                    content = tokenizerBytes,
+                    status = HttpStatusCode.OK
+                )
+                else -> respond("Not found", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = HttpClient(engine)
+        val downloader = ModelDownloader(client)
+
+        val config = EmbeddingConfig(
+            modelPath = repoId,
+            modelCacheDir = tempDir.toString(),
+            dimension = 2,
+            batchSize = 1,
+            maxTokens = 4,
+            modelFilename = "custom.onnx"
+        )
+
+        val artifacts = downloader.ensureArtifacts(config)
+
+        assertTrue(artifacts.modelFile.fileName.toString() == "custom.onnx")
+        assertEquals(modelBytes, artifacts.modelFile.toFile().readText())
     }
 }

@@ -24,6 +24,7 @@ dependencies {
 
     // Ktor server (if needed for HTTP transport later)
     implementation(libs.bundles.ktor.server)
+    implementation(libs.bundles.ktor.client)
 
     // Configuration
     implementation(libs.typesafe.config)

@@ -66,7 +66,9 @@ object AppConfigLoader {
                 modelCacheDir = it.getString("modelCacheDir"),
                 dimension = it.getInt("dimension"),
                 batchSize = it.getInt("batchSize"),
-                maxTokens = it.getInt("maxTokens")
+                maxTokens = it.getInt("maxTokens"),
+                modelFilename = if (it.hasPath("modelFilename")) it.getString("modelFilename") else null,
+                quantized = if (it.hasPath("quantized")) it.getBoolean("quantized") else false
             )
         }
 
@@ -100,11 +102,22 @@ object AppConfigLoader {
             )
         }
 
+        val rerankingConfig = getConfig("reranking").let {
+            RerankingConfig(
+                enabled = it.hasPath("enabled") && it.getBoolean("enabled"),
+                modelPath = if (it.hasPath("modelPath")) it.getString("modelPath") else "BAAI/bge-reranker-base",
+                modelCacheDir = if (it.hasPath("modelCacheDir")) it.getString("modelCacheDir") else "./models",
+                modelFilename = if (it.hasPath("modelFilename")) it.getString("modelFilename") else null,
+                quantized = if (it.hasPath("quantized")) it.getBoolean("quantized") else false
+            )
+        }
+
         return AppConfig(
             database = databaseConfig,
             embedding = embeddingConfig,
             chunking = chunkingConfig,
             retrieval = retrievalConfig,
+            reranking = rerankingConfig,
             crawler = crawlerConfig
         )
     }

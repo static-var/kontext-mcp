@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
 FROM eclipse-temurin:17-jdk AS build
+ARG GRADLE_JVMARGS="-Xmx2g -XX:MaxMetaspaceSize=512m"
+ARG GRADLE_WORKERS="2"
+ARG GRADLE_PARALLEL="false"
+ENV GRADLE_USER_HOME=/workspace/.gradle
 WORKDIR /workspace
 
 COPY gradlew gradlew
@@ -10,7 +14,12 @@ COPY modules modules
 COPY config config
 
 RUN chmod +x gradlew
-RUN ./gradlew --no-daemon :modules:crawler:installDist
+RUN ./gradlew --no-daemon \
+    -Dorg.gradle.jvmargs="${GRADLE_JVMARGS}" \
+    -Dorg.gradle.workers.max="${GRADLE_WORKERS}" \
+    -Dorg.gradle.parallel="${GRADLE_PARALLEL}" \
+    :modules:crawler:installDist \
+    -x test
 
 FROM eclipse-temurin:17-jre AS runtime
 ENV APP_HOME=/opt/mcp-crawler \
@@ -23,7 +32,6 @@ COPY --from=build /workspace/modules/crawler/build/install/crawler ./
 COPY config ${APP_HOME}/config
 COPY docker/entrypoint-crawler.sh /usr/local/bin/entrypoint.sh
 COPY docker/healthcheck-crawler.sh /usr/local/bin/healthcheck.sh
-COPY .env ${APP_HOME}/.env
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl procps \

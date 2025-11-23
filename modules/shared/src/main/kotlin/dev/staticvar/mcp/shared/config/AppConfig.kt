@@ -9,7 +9,16 @@ data class AppConfig(
     val embedding: EmbeddingConfig,
     val chunking: ChunkingConfig,
     val retrieval: RetrievalConfig,
+    val reranking: RerankingConfig,
     val crawler: CrawlerConfig
+)
+
+data class RerankingConfig(
+    val enabled: Boolean = false,
+    val modelPath: String = "BAAI/bge-reranker-base",
+    val modelCacheDir: String = "./models",
+    val modelFilename: String? = null,
+    val quantized: Boolean = false
 )
 
 data class DatabaseConfig(
@@ -27,6 +36,8 @@ data class DatabaseConfig(
 data class EmbeddingConfig(
     val modelPath: String,
     val modelCacheDir: String = "./models",
+    val modelFilename: String? = null,
+    val quantized: Boolean = false,
     val dimension: Int = 1024,
     val batchSize: Int = 32,
     val maxTokens: Int = 512

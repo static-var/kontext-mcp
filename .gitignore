@@ -22,6 +22,16 @@ tmp/
 tmp-gradle/
 tmp_app.js
 
+# Frontend build artifacts
+node_modules/
+modules/web/node_modules/
+modules/web/dist/
+modules/web/.vite/
+
+# Model caches
+models/
+modules/crawler/models/
+
 # Docker artifacts
 docker/*.pid
 docker/*.log

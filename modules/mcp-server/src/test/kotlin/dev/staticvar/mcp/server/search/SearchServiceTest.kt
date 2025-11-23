@@ -1,11 +1,13 @@
 package dev.staticvar.mcp.server.search
 
 import dev.staticvar.mcp.embedder.service.EmbeddingService
+import dev.staticvar.mcp.embedder.service.RerankerService
 import dev.staticvar.mcp.embedder.service.model.EmbeddingBatchRequest
 import dev.staticvar.mcp.embedder.service.model.EmbeddingResult
-import dev.staticvar.mcp.indexer.repository.ScoredChunk
-import dev.staticvar.mcp.shared.config.RetrievalConfig
 import dev.staticvar.mcp.indexer.repository.EmbeddingRepository
+import dev.staticvar.mcp.indexer.repository.ScoredChunk
+import dev.staticvar.mcp.shared.config.RerankingConfig
+import dev.staticvar.mcp.shared.config.RetrievalConfig
 import dev.staticvar.mcp.shared.model.EmbeddedChunk
 import dev.staticvar.mcp.shared.model.SearchRequest
 import kotlin.test.Test
@@ -41,7 +43,9 @@ class SearchServiceTest {
         val service = SearchService(
             embeddingService = embeddingService,
             embeddingRepository = repository,
-            retrievalConfig = RetrievalConfig(defaultTokenBudget = 120, maxTokenBudget = 200, topKCandidates = 5)
+            rerankerService = NoOpReranker(),
+            retrievalConfig = RetrievalConfig(defaultTokenBudget = 120, maxTokenBudget = 200, topKCandidates = 5),
+            rerankingConfig = RerankingConfig(enabled = false)
         )
 
         val response = service.search(
@@ -64,7 +68,13 @@ class SearchServiceTest {
         val embeddingService = FakeEmbeddingService(floatArrayOf(0.0f))
         val repository = FakeEmbeddingRepository(emptyList())
         val config = RetrievalConfig(defaultSimilarityThreshold = 0.45f, topKCandidates = 5)
-        val service = SearchService(embeddingService, repository, config)
+        val service = SearchService(
+            embeddingService,
+            repository,
+            NoOpReranker(),
+            config,
+            RerankingConfig(enabled = false)
+        )
 
         val response = service.search(
             SearchRequest(
@@ -113,6 +123,12 @@ class SearchServiceTest {
 
         override suspend fun deleteByDocumentId(documentId: Int) {
             error("Not expected in tests")
+        }
+    }
+
+    private class NoOpReranker : RerankerService {
+        override suspend fun rerank(query: String, documents: List<String>): List<Int> {
+            return documents.indices.toList()
         }
     }
 }

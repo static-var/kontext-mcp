@@ -73,11 +73,29 @@ install_linux() {
   if [[ "${INSTALL_DOCKER}" == "true" ]]; then
     if ! command -v docker >/dev/null 2>&1; then
       header "Installing Docker Engine"
+      
+      # Detect distro for Docker repo
+      DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+      if [[ "$DISTRO" == "linuxmint" ]] || [[ "$DISTRO" == "elementary" ]] || [[ "$DISTRO" == "pop" ]]; then
+        DISTRO="ubuntu"
+      elif [[ "$DISTRO" == "raspbian" ]]; then
+        DISTRO="debian"
+      fi
+      
+      # Fallback for unknown Debian-based distros
+      if [[ "$DISTRO" != "ubuntu" ]] && [[ "$DISTRO" != "debian" ]]; then
+         warn "Unknown distro '$DISTRO', defaulting to 'ubuntu' for Docker repo."
+         DISTRO="ubuntu"
+      fi
+
       sudo install -m 0755 -d /etc/apt/keyrings
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      curl -fsSL https://download.docker.com/linux/$DISTRO/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      chmod a+r /etc/apt/keyrings/docker.gpg
+
       echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$DISTRO \
         $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+      
       sudo apt-get update -y
       sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       sudo usermod -aG docker "${SUDO_USER:-$USER}"

@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1.7
+# Dockerfile for using pre-built distribution
+# Usage: Build locally first with `./gradlew :modules:crawler:installDist`
+
+FROM eclipse-temurin:17-jre AS runtime
+ENV APP_HOME=/opt/mcp-crawler \
+    MODEL_CACHE_DIR=/app/models \
+    APP_CONFIG_PATH=/app/config/application.conf \
+    LANG=C.UTF-8
+WORKDIR ${APP_HOME}
+
+COPY modules/crawler/build/install/crawler ./
+COPY config ${APP_HOME}/config
+COPY docker/entrypoint-crawler.sh /usr/local/bin/entrypoint.sh
+COPY docker/healthcheck-crawler.sh /usr/local/bin/healthcheck.sh
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends bash curl procps \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.sh \
+    && mkdir -p /app/models /app/config \
+    && adduser --system --group --home ${APP_HOME} appuser \
+    && chown -R appuser:appuser ${APP_HOME} /app
+
+USER appuser
+VOLUME ["/app/models", "/app/config"]
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["/usr/local/bin/healthcheck.sh"]

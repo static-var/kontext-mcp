@@ -35,17 +35,31 @@ class ModelDownloader(private val httpClient: HttpClient) {
     suspend fun ensureArtifacts(config: EmbeddingConfig): ModelArtifacts {
         val modelPath = Path.of(config.modelPath)
         if (modelPath.exists()) {
-            return resolveFromLocal(modelPath)
+            return resolveFromLocal(modelPath, config.modelFilename)
         }
 
         // treat value as huggingface repo id (e.g., "BAAI/bge-large-en-v1.5")
-        return downloadFromHuggingFace(config.modelPath, Path.of(config.modelCacheDir))
+        return downloadFromHuggingFace(
+            repoId = config.modelPath,
+            cacheDir = Path.of(config.modelCacheDir),
+            modelFilename = config.modelFilename,
+            quantized = config.quantized
+        )
     }
 
-    private fun resolveFromLocal(path: Path): ModelArtifacts {
+    private fun resolveFromLocal(path: Path, modelFilename: String?): ModelArtifacts {
         val modelFile = when {
             path.extension.equals("onnx", ignoreCase = true) -> path
-            path.isDirectory() -> path.resolve("model.onnx")
+            path.isDirectory() -> {
+                if (modelFilename != null) {
+                    path.resolve(modelFilename)
+                } else {
+                    // Try common names if no filename provided
+                    val candidates = listOf("model.onnx", "onnx/model.onnx", "model_quantized.onnx")
+                    candidates.map { path.resolve(it) }.firstOrNull { it.exists() }
+                        ?: path.resolve("model.onnx") // Default fallback
+                }
+            }
             else -> error("Unsupported model path: ${path.pathString}. Provide a directory or .onnx file.")
         }
 
@@ -57,22 +71,27 @@ class ModelDownloader(private val httpClient: HttpClient) {
         return ModelArtifacts(modelFile, tokenizerFile)
     }
 
-    private suspend fun downloadFromHuggingFace(repoId: String, cacheDir: Path): ModelArtifacts {
+    private suspend fun downloadFromHuggingFace(
+        repoId: String,
+        cacheDir: Path,
+        modelFilename: String?,
+        quantized: Boolean
+    ): ModelArtifacts {
         val sanitized = sanitizeRepoId(repoId)
         val targetDir = cacheDir.resolve(sanitized)
         if (targetDir.notExists()) {
             targetDir.createDirectories()
         }
 
-        val modelFile = targetDir.resolve("model.onnx")
-        val tokenizerFile = targetDir.resolve("tokenizer.json")
-
-        if (modelFile.notExists()) {
-            downloadArtifact(
-                url = huggingFaceUrl(repoId, "onnx/model.onnx"),
-                target = modelFile
-            )
+        // Determine which model file to look for
+        val candidatePaths = when {
+            modelFilename != null -> listOf(modelFilename)
+            quantized -> listOf("model_quantized.onnx", "onnx/model_quantized.onnx", "model.onnx", "onnx/model.onnx")
+            else -> listOf("onnx/model.onnx", "model.onnx")
         }
+
+        val modelFile = resolveOrDownloadModel(repoId, targetDir, candidatePaths)
+        val tokenizerFile = targetDir.resolve("tokenizer.json")
 
         if (tokenizerFile.notExists()) {
             downloadArtifact(
@@ -82,6 +101,38 @@ class ModelDownloader(private val httpClient: HttpClient) {
         }
 
         return ModelArtifacts(modelFile, tokenizerFile)
+    }
+
+    private suspend fun resolveOrDownloadModel(
+        repoId: String,
+        targetDir: Path,
+        candidates: List<String>
+    ): Path {
+        // 1. Check if any candidate already exists locally
+        for (candidate in candidates) {
+            val localPath = targetDir.resolve(candidate.substringAfterLast("/"))
+            if (localPath.exists()) return localPath
+        }
+
+        // 2. Try to download candidates in order
+        for (candidate in candidates) {
+            val targetName = candidate.substringAfterLast("/")
+            val targetPath = targetDir.resolve(targetName)
+            
+            try {
+                downloadArtifact(
+                    url = huggingFaceUrl(repoId, candidate),
+                    target = targetPath
+                )
+                return targetPath
+            } catch (e: IOException) {
+                logger.warn { "Failed to download $candidate: ${e.message}. Trying next candidate..." }
+                // Clean up partial download if any
+                runCatching { Files.deleteIfExists(targetPath) }
+            }
+        }
+
+        throw IOException("Failed to download any model file from $repoId. Tried: $candidates")
     }
 
     private suspend fun downloadArtifact(url: String, target: Path) {

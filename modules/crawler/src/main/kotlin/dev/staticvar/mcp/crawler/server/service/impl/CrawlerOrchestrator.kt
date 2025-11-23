@@ -284,18 +284,14 @@ class CrawlerOrchestrator(
 
         val parseResult = parser.parse(parseRequest, ParserContext(chunking = chunkingConfig))
 
-        documentRepository.deleteBySourceUrl(source.url)
-        val documentId = documentRepository.insert(parseResult.document)
-
+        // Generate embeddings outside the transaction to avoid holding the lock too long
         val chunks = parseResult.chunks
-        if (chunks.isEmpty()) {
-            logger.warn { "Parser ${parser::class.simpleName} produced no chunks for ${source.url}" }
-        } else {
+        val embeddedChunks = if (chunks.isNotEmpty()) {
             val embeddings = embeddingService.embed(EmbeddingBatchRequest(chunks.map(DocumentChunk::content)))
-            val embeddedChunks = embeddings.mapIndexed { index, embeddingResult ->
+            embeddings.mapIndexed { index, embeddingResult ->
                 EmbeddedChunk(
                     id = 0,
-                    documentId = documentId,
+                    documentId = 0, // Will be updated after document insertion
                     chunkIndex = index,
                     content = chunks[index].content,
                     embedding = embeddingResult.embedding,
@@ -303,7 +299,16 @@ class CrawlerOrchestrator(
                     tokenCount = embeddingResult.tokenCount
                 )
             }
-            embeddingRepository.insertBatch(embeddedChunks)
+        } else {
+            emptyList()
+        }
+
+        documentRepository.deleteBySourceUrl(source.url)
+        val documentId = documentRepository.insert(parseResult.document)
+
+        if (embeddedChunks.isNotEmpty()) {
+            val chunksWithId = embeddedChunks.map { it.copy(documentId = documentId) }
+            embeddingRepository.insertBatch(chunksWithId)
         }
 
         sourceUrlRepository.updateCrawlMetadata(source.id, fetched.etag, fetched.lastModified)

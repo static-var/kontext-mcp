@@ -10,7 +10,9 @@ import dev.staticvar.mcp.indexer.repository.SourceUrlRepository
 import dev.staticvar.mcp.indexer.repository.impl.DocumentRepositoryImpl
 import dev.staticvar.mcp.indexer.repository.impl.EmbeddingRepositoryImpl
 import dev.staticvar.mcp.indexer.repository.impl.SourceUrlRepositoryImpl
+import dev.staticvar.mcp.embedder.service.RerankerService
 import dev.staticvar.mcp.server.search.SearchService
+import dev.staticvar.mcp.shared.config.RerankingConfig
 import dev.staticvar.mcp.shared.config.DatabaseConfig
 import dev.staticvar.mcp.shared.config.RetrievalConfig
 import dev.staticvar.mcp.shared.model.ContentType
@@ -58,7 +60,9 @@ class SearchEvaluationIntegrationTest {
             val searchService = SearchService(
                 embeddingService = embeddingService,
                 embeddingRepository = embeddingRepo,
-                retrievalConfig = RetrievalConfig()
+                rerankerService = NoOpReranker(),
+                retrievalConfig = RetrievalConfig(),
+                rerankingConfig = RerankingConfig(enabled = false)
             )
 
             val summary = evaluateDataset(expectations, searchService)
@@ -249,6 +253,12 @@ class SearchEvaluationIntegrationTest {
                 vector[i] /= norm
             }
             return vector
+        }
+    }
+
+    private class NoOpReranker : RerankerService {
+        override suspend fun rerank(query: String, documents: List<String>): List<Int> {
+            return documents.indices.toList()
         }
     }
 }

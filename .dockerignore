@@ -1,7 +1,10 @@
 .git
 .gitignore
 .gradle
-**/build
+**/build/classes
+**/build/kotlin
+**/build/tmp
+**/build/generated
 **/.idea
 **/*.iml
 tmp-gradle

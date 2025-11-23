@@ -2,6 +2,7 @@
     <property name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}" />
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
         </encoder>

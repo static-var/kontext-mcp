@@ -1,11 +1,13 @@
 package dev.staticvar.mcp.server
 
 import dev.staticvar.mcp.embedder.service.EmbeddingService
+import dev.staticvar.mcp.embedder.service.RerankerService
 import dev.staticvar.mcp.embedder.service.model.EmbeddingBatchRequest
 import dev.staticvar.mcp.embedder.service.model.EmbeddingResult
 import dev.staticvar.mcp.indexer.repository.EmbeddingRepository
 import dev.staticvar.mcp.indexer.repository.ScoredChunk
 import dev.staticvar.mcp.server.search.SearchService
+import dev.staticvar.mcp.shared.config.RerankingConfig
 import dev.staticvar.mcp.shared.config.RetrievalConfig
 import dev.staticvar.mcp.shared.model.EmbeddedChunk
 import dev.staticvar.mcp.shared.model.SearchResponse
@@ -103,7 +105,15 @@ class McpServerIntegrationTest {
         return SearchService(
             embeddingService = embeddingService,
             embeddingRepository = repository,
-            retrievalConfig = RetrievalConfig(defaultTokenBudget = 400, maxTokenBudget = 800, topKCandidates = 5)
+            rerankerService = NoOpReranker(),
+            retrievalConfig = RetrievalConfig(defaultTokenBudget = 400, maxTokenBudget = 800, topKCandidates = 5),
+            rerankingConfig = RerankingConfig(enabled = false)
         )
+    }
+
+    private class NoOpReranker : RerankerService {
+        override suspend fun rerank(query: String, documents: List<String>): List<Int> {
+            return documents.indices.toList()
+        }
     }
 }

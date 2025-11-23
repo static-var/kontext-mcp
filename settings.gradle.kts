@@ -6,5 +6,6 @@ include(
     ":modules:parser",
     ":modules:indexer",
     ":modules:crawler",
-    ":modules:mcp-server"
+    ":modules:mcp-server",
+    ":modules:web"
 )

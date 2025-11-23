@@ -38,6 +38,7 @@ DB_NAME=mcp_db
 DB_USER=mcp_user
 DB_PASSWORD=mcp_password
 EMBEDDING_MODEL_PATH=BAAI/bge-large-en-v1.5
+EMBEDDING_QUANTIZED=true
 CRAWLER_MODE=daemon
 CRAWLER_PORT=8080
 CRAWLER_AUTH_USERNAME=admin
@@ -72,8 +73,12 @@ docker compose up -d mcp-server crawler
 echo "[kontext-preinstall] Tailing initial crawler log for model download status (10s)"
 timeout 10s docker logs -f mcp-crawler || true
 
-echo "[kontext-preinstall] Current model cache contents:" 
-docker run --rm -v kontext-mcp_model_cache:/app/models alpine:3.20 /bin/sh -c 'ls -1 /app/models || true'
+# Determine project name (defaults to directory name) for volume lookup
+PROJECT_NAME=$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
+VOLUME_NAME="${PROJECT_NAME}_model_cache"
+
+echo "[kontext-preinstall] Current model cache contents (volume: $VOLUME_NAME):" 
+docker run --rm -v "${VOLUME_NAME}:/app/models" alpine:3.20 /bin/sh -c 'ls -1 /app/models || true'
 
 echo "[kontext-preinstall] Done. To restart Caddy with new routes: ../restart-caddy.sh"
 echo "[kontext-preinstall] Access dashboard via https://dash.kontext.staticvar.dev (or /dashboard path on kontext.staticvar.dev)."

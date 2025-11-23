@@ -1,9 +1,11 @@
 package dev.staticvar.mcp.server.search
 
 import dev.staticvar.mcp.embedder.service.EmbeddingService
+import dev.staticvar.mcp.embedder.service.RerankerService
 import dev.staticvar.mcp.embedder.service.model.EmbeddingBatchRequest
 import dev.staticvar.mcp.indexer.repository.EmbeddingRepository
 import dev.staticvar.mcp.indexer.repository.ScoredChunk
+import dev.staticvar.mcp.shared.config.RerankingConfig
 import dev.staticvar.mcp.shared.config.RetrievalConfig
 import dev.staticvar.mcp.shared.model.RetrievedChunk
 import dev.staticvar.mcp.shared.model.SearchRequest
@@ -16,7 +18,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 class SearchService(
     private val embeddingService: EmbeddingService,
     private val embeddingRepository: EmbeddingRepository,
-    private val retrievalConfig: RetrievalConfig
+    private val rerankerService: RerankerService,
+    private val retrievalConfig: RetrievalConfig,
+    private val rerankingConfig: RerankingConfig
 ) {
 
     private val logger = KotlinLogging.logger { }
@@ -33,12 +37,28 @@ class SearchService(
             logger.warn { "Query text exceeded embedding token limit (${embeddingService.maxTokens}); search results may degrade." }
         }
 
-        val scoredChunks = embeddingRepository.search(
+        // Fetch more candidates if reranking is enabled to improve recall before precision refinement
+        val candidateLimit = if (rerankingConfig.enabled) {
+            retrievalConfig.topKCandidates * 5
+        } else {
+            retrievalConfig.topKCandidates
+        }
+
+        var scoredChunks = embeddingRepository.search(
             queryEmbedding = embeddingResult.embedding,
-            limit = retrievalConfig.topKCandidates,
+            limit = candidateLimit,
             similarityThreshold = similarityThreshold,
             filters = request.filters
         )
+
+        if (rerankingConfig.enabled && scoredChunks.isNotEmpty()) {
+            logger.debug { "Reranking ${scoredChunks.size} candidates for query: ${request.query}" }
+            val documents = scoredChunks.map { it.content }
+            val rerankedIndices = rerankerService.rerank(request.query, documents)
+            
+            scoredChunks = rerankedIndices.map { scoredChunks[it] }
+                .take(retrievalConfig.topKCandidates)
+        }
 
         val packed = packResults(scoredChunks, tokenBudget)
         val retrievedChunks = packed.chunks.map { chunk ->

@@ -6,13 +6,12 @@ import dev.staticvar.mcp.crawler.server.auth.authRoutes
 import dev.staticvar.mcp.crawler.server.auth.protectedRoutes
 import dev.staticvar.mcp.crawler.server.config.CrawlerConfig
 import dev.staticvar.mcp.crawler.server.routes.apiRoutes
-import dev.staticvar.mcp.crawler.server.routes.dashboardRoutes
-import dev.staticvar.mcp.crawler.server.routes.managementRoutes
 import dev.staticvar.mcp.crawler.server.service.CrawlStatusSnapshot
 import dev.staticvar.mcp.crawler.server.service.CrawlerServices
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.http.content.*
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
@@ -72,9 +71,14 @@ fun Application.crawlerModule(
     }
 
     routing {
-        get("/") {
-            call.respondRedirect("/dashboard")
-        }
+        // Serve the Vite SPA from classpath resources
+        staticResources("/", "static", index = "index.html")
+
+        // Handle SPA client-side routing by serving index.html for unknown paths
+        // excluding /api, /healthz, etc. which are handled by other routes.
+        // Note: This simple fallback might need adjustment if you have deep links.
+        // For now, let's rely on staticResources serving the files and index.html.
+        // If client-side routing is needed for deep links, we might need a wildcard route at the end.
 
         get("/healthz") {
             val snapshot = services.status.snapshot()
@@ -95,8 +99,6 @@ fun Application.crawlerModule(
                 respondRedirect("/login")
             }
         }) {
-            dashboardRoutes(services.status)
-            managementRoutes(services)
             route("/api") {
                 apiRoutes(services)
             }

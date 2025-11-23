@@ -33,15 +33,24 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/crawl/schedule") {
-        val payload = if (call.request.contentType().match(ContentType.Application.Json)) {
-            call.receive<SchedulePayload>()
-        } else {
-            val params = call.receiveParameters()
-            SchedulePayload(
-                id = params["id"],
-                cron = params["cron"].orEmpty(),
-                description = params["description"]
-            )
+        val payload = when {
+            call.isJsonRequest() -> call.receiveJsonOrNull<SchedulePayload>() ?: return@post
+            call.isFormRequest() -> {
+                val params = call.receiveParameters()
+                SchedulePayload(
+                    id = params["id"],
+                    cron = params["cron"].orEmpty(),
+                    description = params["description"]
+                )
+            }
+            !call.hasRequestBody() -> {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Request body required"))
+                return@post
+            }
+            else -> {
+                call.respond(HttpStatusCode.UnsupportedMediaType, mapOf("error" to "Use application/json or application/x-www-form-urlencoded"))
+                return@post
+            }
         }
 
         if (payload.cron.isBlank()) {
@@ -85,14 +94,23 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/urls") {
-        val payload = if (call.request.contentType().match(ContentType.Application.Json)) {
-            call.receive<UrlPayload>().normalize()
-        } else {
-            val params = call.receiveParameters()
-            UrlPayload(
-                url = params["url"].orEmpty(),
-                parserType = params["parserType"].takeUnless { it.isNullOrBlank() }
-            )
+        val payload = when {
+            call.isJsonRequest() -> call.receiveJsonOrNull<UrlPayload>()?.normalize() ?: return@post
+            call.isFormRequest() -> {
+                val params = call.receiveParameters()
+                UrlPayload(
+                    url = params["url"].orEmpty(),
+                    parserType = params["parserType"].takeUnless { it.isNullOrBlank() }
+                )
+            }
+            !call.hasRequestBody() -> {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Request body required"))
+                return@post
+            }
+            else -> {
+                call.respond(HttpStatusCode.UnsupportedMediaType, mapOf("error" to "Use application/json or application/x-www-form-urlencoded"))
+                return@post
+            }
         }
 
         if (payload.url.isBlank()) {
@@ -101,7 +119,10 @@ fun Route.apiRoutes(services: CrawlerServices) {
         }
 
         val parserType = payload.parserType?.takeUnless { it.isBlank() }?.let { value ->
-            runCatching { ParserType.valueOf(value) }.getOrNull()
+            runCatching { ParserType.valueOf(value) }.getOrElse {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid parser type: $value. Allowed: ${ParserType.values().joinToString()}"))
+                return@post
+            }
         }
 
         val record = services.sources.add(
@@ -213,3 +234,19 @@ private fun dev.staticvar.mcp.crawler.server.service.CrawlTriggerResult.toRespon
     jobId = jobId,
     message = message
 )
+
+private fun ApplicationCall.isJsonRequest(): Boolean =
+    request.contentType().withoutParameters().match(ContentType.Application.Json)
+
+private fun ApplicationCall.isFormRequest(): Boolean =
+    request.contentType().withoutParameters().match(ContentType.Application.FormUrlEncoded)
+
+private fun ApplicationCall.hasRequestBody(): Boolean =
+    request.contentLength()?.let { it > 0 } ?: true
+
+private suspend inline fun <reified T : Any> ApplicationCall.receiveJsonOrNull(): T? =
+    runCatching { receive<T>() }
+        .onFailure {
+            respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid JSON payload"))
+        }
+        .getOrNull()

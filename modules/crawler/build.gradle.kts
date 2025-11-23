@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+import org.gradle.language.jvm.tasks.ProcessResources
+
 application {
     mainClass.set("dev.staticvar.mcp.crawler.server.CrawlerServerKt")
 }
@@ -45,4 +47,39 @@ dependencies {
 
     testImplementation(libs.bundles.testing)
     testImplementation(libs.ktorClientMock)
+}
+
+tasks.register("buildWeb") {
+    val webDir = project(":modules:web").projectDir
+    inputs.dir(webDir.resolve("src"))
+    inputs.dir(webDir.resolve("public"))
+    inputs.file(webDir.resolve("package.json"))
+    inputs.file(webDir.resolve("package-lock.json"))
+    inputs.file(webDir.resolve("vite.config.ts"))
+    inputs.file(webDir.resolve("index.html"))
+    inputs.file(webDir.resolve("tsconfig.json"))
+    inputs.file(webDir.resolve("tailwind.config.cjs"))
+    inputs.file(webDir.resolve("postcss.config.cjs"))
+    outputs.dir(webDir.resolve("dist"))
+
+    doLast {
+        exec {
+            workingDir = webDir
+            commandLine = listOf("npm", "install")
+        }
+        exec {
+            workingDir = webDir
+            commandLine = listOf("npm", "run", "build")
+        }
+    }
+}
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn("buildWeb")
+    // Exclude the placeholder index.html from src/main/resources
+    exclude("static/index.html")
+    
+    from(project(":modules:web").projectDir.resolve("dist")) {
+        into("static")
+    }
 }

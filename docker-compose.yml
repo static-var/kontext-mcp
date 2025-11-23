@@ -10,6 +10,8 @@ services:
     # Internal only; no host port exposure needed
     expose:
       - "5432"
+    ports:
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -24,7 +26,7 @@ services:
   mcp-server:
     build:
       context: .
-      dockerfile: docker/Dockerfile.mcp-server
+      dockerfile: docker/Dockerfile.mcp-server.prebuilt
     container_name: mcp-server
     environment:
       DB_HOST: postgres
@@ -34,6 +36,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-mcp_password}
       # Use HF model id; binary weights cached under MODEL_CACHE_DIR
       EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-BAAI/bge-large-en-v1.5}
+      EMBEDDING_QUANTIZED: ${EMBEDDING_QUANTIZED:-true}
       MODEL_CACHE_DIR: /app/models
       APP_CONFIG_PATH: /app/config/application.conf
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -61,7 +64,7 @@ services:
   crawler:
     build:
       context: .
-      dockerfile: docker/Dockerfile.crawler
+      dockerfile: docker/Dockerfile.crawler.prebuilt
     container_name: mcp-crawler
     env_file:
       - .env
@@ -73,6 +76,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-mcp_password}
       # Use HF model id; binary weights cached under MODEL_CACHE_DIR
       EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-BAAI/bge-large-en-v1.5}
+      EMBEDDING_QUANTIZED: ${EMBEDDING_QUANTIZED:-true}
       MODEL_CACHE_DIR: /app/models
       APP_CONFIG_PATH: /app/config/application.conf
       CRAWLER_MODE: ${CRAWLER_MODE:-daemon}
@@ -84,28 +88,28 @@ services:
       CRAWLER_SESSION_SECRET: ${CRAWLER_SESSION_SECRET:-replace-with-32-byte-secret}
       CRAWLER_INDEXER_BASE_URL: ${CRAWLER_INDEXER_BASE_URL:-http://mcp-server:8081}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS_CRAWLER:--Xms512m -Xmx3g}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS_CRAWLER:--Xms512m -Xmx1536m}
     volumes:
       - model_cache:/app/models
       - ./config:/app/config:ro
+      - ./.env:/opt/mcp-crawler/.env:ro
     # Expose internally; Caddy will reverse proxy on appsnet
     expose:
       - "8080"
+    ports:
+      - "${CRAWLER_PORT:-8081}:8080"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - mcp-network
-      - appsnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "2.0"
-          memory: 4g
-        reservations:
-          cpus: "1.0"
-          memory: 2g
 
 volumes:
   postgres_data:
@@ -116,5 +120,3 @@ volumes:
 networks:
   mcp-network:
     driver: bridge
-  appsnet:
-    external: true

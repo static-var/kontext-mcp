@@ -1,0 +1,1 @@
+ALWAYS ADD `--quiet --console=plain --warning-mode=summary` flags to your gradle commands.
