@@ -7,8 +7,8 @@ import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OrtSession.SessionOptions
 import ai.onnxruntime.TensorInfo
 import dev.staticvar.mcp.embedder.tokenizer.TokenizedInput
-import kotlin.math.sqrt
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlin.math.sqrt
 
 private val runnerLogger = KotlinLogging.logger {}
 
@@ -22,9 +22,8 @@ class OnnxEmbeddingModelRunner private constructor(
     private val attentionMaskName: String,
     private val tokenTypeIdsName: String?,
     override val dimension: Int,
-    private val outputName: String
+    private val outputName: String,
 ) : EmbeddingModelRunner {
-
     override fun infer(batch: List<TokenizedInput>): List<FloatArray> {
         if (batch.isEmpty()) return emptyList()
 
@@ -50,8 +49,9 @@ class OnnxEmbeddingModelRunner private constructor(
             }
 
             session.run(tensors, setOf(outputName)).use { outputs ->
-                val tensor = outputs.get(outputName)
-                    .orElseThrow { IllegalStateException("Model output '$outputName' missing") }
+                val tensor =
+                    outputs.get(outputName)
+                        .orElseThrow { IllegalStateException("Model output '$outputName' missing") }
                 tensor.use {
                     if (it !is OnnxTensor) {
                         throw IllegalStateException("Model output '$outputName' is not a tensor")
@@ -60,7 +60,7 @@ class OnnxEmbeddingModelRunner private constructor(
                         tensor = it,
                         batchSize = batchSize,
                         sequenceLength = sequenceLength,
-                        masks = attentionMasks
+                        masks = attentionMasks,
                     )
                 }
             }
@@ -73,36 +73,38 @@ class OnnxEmbeddingModelRunner private constructor(
         tensor: OnnxTensor,
         batchSize: Int,
         sequenceLength: Int,
-        masks: Array<LongArray>
+        masks: Array<LongArray>,
     ): List<FloatArray> {
-        val info = tensor.info as? TensorInfo
-            ?: error("Unexpected output type ${tensor.info}")
+        val info =
+            tensor.info as? TensorInfo
+                ?: error("Unexpected output type ${tensor.info}")
 
         val rawShape = info.shape
         val buffer = tensor.floatBuffer
         val remaining = buffer.remaining()
-        val (effectiveShape, hiddenSize) = when (rawShape.size) {
-            2 -> {
-                val hidden = if (rawShape[1] > 0) rawShape[1].toInt() else dimension
-                require(hidden == dimension) {
-                    "Expected embedding dimension $dimension, but model returned $hidden"
+        val (effectiveShape, hiddenSize) =
+            when (rawShape.size) {
+                2 -> {
+                    val hidden = if (rawShape[1] > 0) rawShape[1].toInt() else dimension
+                    require(hidden == dimension) {
+                        "Expected embedding dimension $dimension, but model returned $hidden"
+                    }
+                    val batch = if (rawShape[0] > 0) rawShape[0].toInt() else batchSize
+                    intArrayOf(batch, hidden) to hidden
                 }
-                val batch = if (rawShape[0] > 0) rawShape[0].toInt() else batchSize
-                intArrayOf(batch, hidden) to hidden
-            }
 
-            3 -> {
-                val hidden = if (rawShape[2] > 0) rawShape[2].toInt() else dimension
-                require(hidden == dimension) {
-                    "Expected embedding dimension $dimension, but model returned $hidden"
+                3 -> {
+                    val hidden = if (rawShape[2] > 0) rawShape[2].toInt() else dimension
+                    require(hidden == dimension) {
+                        "Expected embedding dimension $dimension, but model returned $hidden"
+                    }
+                    val batch = if (rawShape[0] > 0) rawShape[0].toInt() else batchSize
+                    val seq = if (rawShape[1] > 0) rawShape[1].toInt() else sequenceLength
+                    intArrayOf(batch, seq, hidden) to hidden
                 }
-                val batch = if (rawShape[0] > 0) rawShape[0].toInt() else batchSize
-                val seq = if (rawShape[1] > 0) rawShape[1].toInt() else sequenceLength
-                intArrayOf(batch, seq, hidden) to hidden
-            }
 
-            else -> error("Unsupported output shape ${rawShape.joinToString()}")
-        }
+                else -> error("Unsupported output shape ${rawShape.joinToString()}")
+            }
 
         val embeddings = MutableList(batchSize) { FloatArray(dimension) }
         val floatArray = FloatArray(remaining)
@@ -117,7 +119,10 @@ class OnnxEmbeddingModelRunner private constructor(
         return embeddings
     }
 
-    private fun fillFrom2D(raw: FloatArray, target: MutableList<FloatArray>) {
+    private fun fillFrom2D(
+        raw: FloatArray,
+        target: MutableList<FloatArray>,
+    ) {
         var offset = 0
         target.forEach { vector ->
             System.arraycopy(raw, offset, vector, 0, vector.size)
@@ -130,7 +135,7 @@ class OnnxEmbeddingModelRunner private constructor(
         target: MutableList<FloatArray>,
         masks: Array<LongArray>,
         sequenceLength: Int,
-        hiddenSize: Int
+        hiddenSize: Int,
     ) {
         var offset = 0
         target.forEachIndexed { batchIdx, vector ->
@@ -185,14 +190,18 @@ class OnnxEmbeddingModelRunner private constructor(
     }
 
     companion object {
-        private val OUTPUT_CANDIDATES = listOf(
-            "sentence_embedding",
-            "pooled_output",
-            "last_hidden_state",
-            "embeddings"
-        )
+        private val OUTPUT_CANDIDATES =
+            listOf(
+                "sentence_embedding",
+                "pooled_output",
+                "last_hidden_state",
+                "embeddings",
+            )
 
-        fun create(modelPath: java.nio.file.Path, dimension: Int): OnnxEmbeddingModelRunner {
+        fun create(
+            modelPath: java.nio.file.Path,
+            dimension: Int,
+        ): OnnxEmbeddingModelRunner {
             val environment = OrtEnvironment.getEnvironment()
             SessionOptions().use { options ->
                 options.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_WARNING)
@@ -207,7 +216,7 @@ class OnnxEmbeddingModelRunner private constructor(
 
                 fun resolveName(expected: String): String =
                     nameMap[expected] ?: throw IllegalStateException(
-                        "Model input '$expected' not found. Available inputs: $originalInputNames"
+                        "Model input '$expected' not found. Available inputs: $originalInputNames",
                     )
 
                 val inputIds = resolveName("input_ids")
@@ -215,10 +224,11 @@ class OnnxEmbeddingModelRunner private constructor(
                 val tokenType = nameMap["token_type_ids"]
 
                 val outputMap = session.outputNames.associateBy { it.lowercase() }
-                val outputName = OUTPUT_CANDIDATES.firstNotNullOfOrNull { candidate ->
-                    outputMap[candidate]
-                } ?: session.outputNames.firstOrNull()
-                    ?: throw IllegalStateException("ONNX model exposes no outputs")
+                val outputName =
+                    OUTPUT_CANDIDATES.firstNotNullOfOrNull { candidate ->
+                        outputMap[candidate]
+                    } ?: session.outputNames.firstOrNull()
+                        ?: throw IllegalStateException("ONNX model exposes no outputs")
 
                 return OnnxEmbeddingModelRunner(
                     environment = environment,
@@ -227,7 +237,7 @@ class OnnxEmbeddingModelRunner private constructor(
                     attentionMaskName = attentionMask,
                     tokenTypeIdsName = tokenType,
                     dimension = dimension,
-                    outputName = outputName
+                    outputName = outputName,
                 )
             }
         }

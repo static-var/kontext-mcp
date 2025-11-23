@@ -1,6 +1,7 @@
 package dev.staticvar.mcp.embedder.util
 
 import dev.staticvar.mcp.shared.config.EmbeddingConfig
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsChannel
@@ -17,13 +18,12 @@ import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.notExists
 import kotlin.io.path.pathString
-import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
 data class ModelArtifacts(
     val modelFile: Path,
-    val tokenizerFile: Path
+    val tokenizerFile: Path,
 )
 
 /**
@@ -31,7 +31,6 @@ data class ModelArtifacts(
  * Supports both local filesystem paths and HuggingFace repository identifiers.
  */
 class ModelDownloader(private val httpClient: HttpClient) {
-
     suspend fun ensureArtifacts(config: EmbeddingConfig): ModelArtifacts {
         val modelPath = Path.of(config.modelPath)
         if (modelPath.exists()) {
@@ -43,25 +42,29 @@ class ModelDownloader(private val httpClient: HttpClient) {
             repoId = config.modelPath,
             cacheDir = Path.of(config.modelCacheDir),
             modelFilename = config.modelFilename,
-            quantized = config.quantized
+            quantized = config.quantized,
         )
     }
 
-    private fun resolveFromLocal(path: Path, modelFilename: String?): ModelArtifacts {
-        val modelFile = when {
-            path.extension.equals("onnx", ignoreCase = true) -> path
-            path.isDirectory() -> {
-                if (modelFilename != null) {
-                    path.resolve(modelFilename)
-                } else {
-                    // Try common names if no filename provided
-                    val candidates = listOf("model.onnx", "onnx/model.onnx", "model_quantized.onnx")
-                    candidates.map { path.resolve(it) }.firstOrNull { it.exists() }
-                        ?: path.resolve("model.onnx") // Default fallback
+    private fun resolveFromLocal(
+        path: Path,
+        modelFilename: String?,
+    ): ModelArtifacts {
+        val modelFile =
+            when {
+                path.extension.equals("onnx", ignoreCase = true) -> path
+                path.isDirectory() -> {
+                    if (modelFilename != null) {
+                        path.resolve(modelFilename)
+                    } else {
+                        // Try common names if no filename provided
+                        val candidates = listOf("model.onnx", "onnx/model.onnx", "model_quantized.onnx")
+                        candidates.map { path.resolve(it) }.firstOrNull { it.exists() }
+                            ?: path.resolve("model.onnx") // Default fallback
+                    }
                 }
+                else -> error("Unsupported model path: ${path.pathString}. Provide a directory or .onnx file.")
             }
-            else -> error("Unsupported model path: ${path.pathString}. Provide a directory or .onnx file.")
-        }
 
         val tokenizerFile = modelFile.parent.resolve("tokenizer.json")
 
@@ -75,7 +78,7 @@ class ModelDownloader(private val httpClient: HttpClient) {
         repoId: String,
         cacheDir: Path,
         modelFilename: String?,
-        quantized: Boolean
+        quantized: Boolean,
     ): ModelArtifacts {
         val sanitized = sanitizeRepoId(repoId)
         val targetDir = cacheDir.resolve(sanitized)
@@ -84,11 +87,12 @@ class ModelDownloader(private val httpClient: HttpClient) {
         }
 
         // Determine which model file to look for
-        val candidatePaths = when {
-            modelFilename != null -> listOf(modelFilename)
-            quantized -> listOf("model_quantized.onnx", "onnx/model_quantized.onnx", "model.onnx", "onnx/model.onnx")
-            else -> listOf("onnx/model.onnx", "model.onnx")
-        }
+        val candidatePaths =
+            when {
+                modelFilename != null -> listOf(modelFilename)
+                quantized -> listOf("model_quantized.onnx", "onnx/model_quantized.onnx", "model.onnx", "onnx/model.onnx")
+                else -> listOf("onnx/model.onnx", "model.onnx")
+            }
 
         val modelFile = resolveOrDownloadModel(repoId, targetDir, candidatePaths)
         val tokenizerFile = targetDir.resolve("tokenizer.json")
@@ -96,7 +100,7 @@ class ModelDownloader(private val httpClient: HttpClient) {
         if (tokenizerFile.notExists()) {
             downloadArtifact(
                 url = huggingFaceUrl(repoId, "tokenizer.json"),
-                target = tokenizerFile
+                target = tokenizerFile,
             )
         }
 
@@ -106,7 +110,7 @@ class ModelDownloader(private val httpClient: HttpClient) {
     private suspend fun resolveOrDownloadModel(
         repoId: String,
         targetDir: Path,
-        candidates: List<String>
+        candidates: List<String>,
     ): Path {
         // 1. Check if any candidate already exists locally
         for (candidate in candidates) {
@@ -118,11 +122,11 @@ class ModelDownloader(private val httpClient: HttpClient) {
         for (candidate in candidates) {
             val targetName = candidate.substringAfterLast("/")
             val targetPath = targetDir.resolve(targetName)
-            
+
             try {
                 downloadArtifact(
                     url = huggingFaceUrl(repoId, candidate),
-                    target = targetPath
+                    target = targetPath,
                 )
                 return targetPath
             } catch (e: IOException) {
@@ -135,7 +139,10 @@ class ModelDownloader(private val httpClient: HttpClient) {
         throw IOException("Failed to download any model file from $repoId. Tried: $candidates")
     }
 
-    private suspend fun downloadArtifact(url: String, target: Path) {
+    private suspend fun downloadArtifact(
+        url: String,
+        target: Path,
+    ) {
         logger.info { "Downloading $url -> ${target.pathString}" }
         val response = httpClient.get(url)
         if (response.status != HttpStatusCode.OK) {
@@ -148,7 +155,7 @@ class ModelDownloader(private val httpClient: HttpClient) {
             target,
             StandardOpenOption.CREATE,
             StandardOpenOption.TRUNCATE_EXISTING,
-            StandardOpenOption.WRITE
+            StandardOpenOption.WRITE,
         ).use { output ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
             while (true) {
@@ -160,10 +167,12 @@ class ModelDownloader(private val httpClient: HttpClient) {
         }
     }
 
-    private fun sanitizeRepoId(repoId: String): String =
-        repoId.replace('/', '_').replace(':', '_')
+    private fun sanitizeRepoId(repoId: String): String = repoId.replace('/', '_').replace(':', '_')
 
-    private fun huggingFaceUrl(repoId: String, artifact: String): String {
+    private fun huggingFaceUrl(
+        repoId: String,
+        artifact: String,
+    ): String {
         val trimmed = artifact.removePrefix("/")
         return "https://huggingface.co/$repoId/resolve/main/$trimmed"
     }

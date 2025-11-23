@@ -7,19 +7,46 @@ ARG GRADLE_PARALLEL="false"
 ENV GRADLE_USER_HOME=/workspace/.gradle
 WORKDIR /workspace
 
+# Install Node.js and npm for frontend build
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm && rm -rf /var/lib/apt/lists/*
+
 COPY gradlew gradlew
 COPY gradle gradle
 COPY settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY modules modules
 COPY config config
 
+# Build the web frontend first
+RUN cd modules/web && npm install && npm run build && \
+    echo "Web build complete. Contents of dist:" && ls -la dist/
+
+# Copy web assets to crawler resources before building JAR
+RUN mkdir -p modules/crawler/src/main/resources/static && \
+    cp -r modules/web/dist/* modules/crawler/src/main/resources/static/ && \
+    echo "Copied web assets. Contents of crawler resources:" && \
+    ls -laR modules/crawler/src/main/resources/static/
+
+# Verify files are there before Gradle runs
+RUN echo "Right before Gradle, static files in src:" && \
+    ls -la modules/crawler/src/main/resources/static/ | head -10
+
 RUN chmod +x gradlew
 RUN ./gradlew --no-daemon \
+    --rerun-tasks \
     -Dorg.gradle.jvmargs="${GRADLE_JVMARGS}" \
     -Dorg.gradle.workers.max="${GRADLE_WORKERS}" \
     -Dorg.gradle.parallel="${GRADLE_PARALLEL}" \
     :modules:crawler:installDist \
     -x test
+
+# Debug: List ALL contents of JAR to see what's included
+RUN echo "=== Full JAR contents ===" && \
+    jar tf modules/crawler/build/install/crawler/lib/crawler-0.1.0.jar | tail -50
+
+# Debug: Check if resources are in build output before JAR
+RUN echo "=== Build libs directory ===" && \
+    ls -la modules/crawler/build/libs/ && \
+    jar tf modules/crawler/build/libs/crawler-0.1.0.jar | tail -50
 
 FROM eclipse-temurin:17-jre AS runtime
 ENV APP_HOME=/opt/mcp-crawler \
@@ -40,6 +67,10 @@ RUN apt-get update \
     && mkdir -p /app/models /app/config \
     && adduser --system --group --home ${APP_HOME} appuser \
     && chown -R appuser:appuser ${APP_HOME} /app
+
+# Copy static assets to a known location for serving from filesystem
+COPY --from=build /workspace/modules/web/dist /app/static
+RUN chown -R appuser:appuser /app/static
 
 USER appuser
 VOLUME ["/app/models", "/app/config"]

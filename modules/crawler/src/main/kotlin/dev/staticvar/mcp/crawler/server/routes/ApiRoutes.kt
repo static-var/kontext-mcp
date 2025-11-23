@@ -3,7 +3,6 @@ package dev.staticvar.mcp.crawler.server.routes
 import dev.staticvar.mcp.crawler.server.auth.currentSession
 import dev.staticvar.mcp.crawler.server.service.AddSourceUrlRequest
 import dev.staticvar.mcp.crawler.server.service.CrawlSchedule
-import dev.staticvar.mcp.crawler.server.service.CrawlStatusService
 import dev.staticvar.mcp.crawler.server.service.CrawlStatusSnapshot
 import dev.staticvar.mcp.crawler.server.service.CrawlerServices
 import dev.staticvar.mcp.crawler.server.service.SourceUrlRecord
@@ -33,38 +32,43 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/crawl/schedule") {
-        val payload = when {
-            call.isJsonRequest() -> call.receiveJsonOrNull<SchedulePayload>() ?: return@post
-            call.isFormRequest() -> {
-                val params = call.receiveParameters()
-                SchedulePayload(
-                    id = params["id"],
-                    cron = params["cron"].orEmpty(),
-                    description = params["description"]
-                )
+        val payload =
+            when {
+                call.isJsonRequest() -> call.receiveJsonOrNull<SchedulePayload>() ?: return@post
+                call.isFormRequest() -> {
+                    val params = call.receiveParameters()
+                    SchedulePayload(
+                        id = params["id"],
+                        cron = params["cron"].orEmpty(),
+                        description = params["description"],
+                    )
+                }
+                !call.hasRequestBody() -> {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Request body required"))
+                    return@post
+                }
+                else -> {
+                    call.respond(
+                        HttpStatusCode.UnsupportedMediaType,
+                        mapOf("error" to "Use application/json or application/x-www-form-urlencoded"),
+                    )
+                    return@post
+                }
             }
-            !call.hasRequestBody() -> {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Request body required"))
-                return@post
-            }
-            else -> {
-                call.respond(HttpStatusCode.UnsupportedMediaType, mapOf("error" to "Use application/json or application/x-www-form-urlencoded"))
-                return@post
-            }
-        }
 
         if (payload.cron.isBlank()) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Cron expression required"))
             return@post
         }
 
-        val schedule = services.scheduler.upsert(
-            UpsertScheduleRequest(
-                id = payload.id,
-                cron = payload.cron,
-                description = payload.description
+        val schedule =
+            services.scheduler.upsert(
+                UpsertScheduleRequest(
+                    id = payload.id,
+                    cron = payload.cron,
+                    description = payload.description,
+                ),
             )
-        )
 
         if (call.request.contentType().match(ContentType.Application.Json)) {
             call.respond(HttpStatusCode.OK, schedule.toPayload())
@@ -94,40 +98,49 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/urls") {
-        val payload = when {
-            call.isJsonRequest() -> call.receiveJsonOrNull<UrlPayload>()?.normalize() ?: return@post
-            call.isFormRequest() -> {
-                val params = call.receiveParameters()
-                UrlPayload(
-                    url = params["url"].orEmpty(),
-                    parserType = params["parserType"].takeUnless { it.isNullOrBlank() }
-                )
+        val payload =
+            when {
+                call.isJsonRequest() -> call.receiveJsonOrNull<UrlPayload>()?.normalize() ?: return@post
+                call.isFormRequest() -> {
+                    val params = call.receiveParameters()
+                    UrlPayload(
+                        url = params["url"].orEmpty(),
+                        parserType = params["parserType"].takeUnless { it.isNullOrBlank() },
+                    )
+                }
+                !call.hasRequestBody() -> {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Request body required"))
+                    return@post
+                }
+                else -> {
+                    call.respond(
+                        HttpStatusCode.UnsupportedMediaType,
+                        mapOf("error" to "Use application/json or application/x-www-form-urlencoded"),
+                    )
+                    return@post
+                }
             }
-            !call.hasRequestBody() -> {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Request body required"))
-                return@post
-            }
-            else -> {
-                call.respond(HttpStatusCode.UnsupportedMediaType, mapOf("error" to "Use application/json or application/x-www-form-urlencoded"))
-                return@post
-            }
-        }
 
         if (payload.url.isBlank()) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "URL required"))
             return@post
         }
 
-        val parserType = payload.parserType?.takeUnless { it.isBlank() }?.let { value ->
-            runCatching { ParserType.valueOf(value) }.getOrElse {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid parser type: $value. Allowed: ${ParserType.values().joinToString()}"))
-                return@post
+        val parserType =
+            payload.parserType?.takeUnless { it.isBlank() }?.let { value ->
+                runCatching { ParserType.valueOf(value) }.getOrElse {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "Invalid parser type: $value. Allowed: ${ParserType.values().joinToString()}"),
+                    )
+                    return@post
+                }
             }
-        }
 
-        val record = services.sources.add(
-            AddSourceUrlRequest(url = payload.url, parserType = parserType)
-        )
+        val record =
+            services.sources.add(
+                AddSourceUrlRequest(url = payload.url, parserType = parserType),
+            )
 
         if (call.request.contentType().match(ContentType.Application.Json)) {
             call.respond(HttpStatusCode.Created, record.toPayload())
@@ -151,7 +164,7 @@ fun Route.apiRoutes(services: CrawlerServices) {
 private data class SchedulePayload(
     val id: String?,
     val cron: String,
-    val description: String?
+    val description: String?,
 )
 
 @Serializable
@@ -163,86 +176,94 @@ private data class UrlPayload(
     val lastCrawled: String? = null,
     val etag: String? = null,
     val lastModified: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 )
 
-private fun UrlPayload.normalize(): UrlPayload = copy(
-    parserType = parserType?.takeUnless { it.isBlank() }
-)
+private fun UrlPayload.normalize(): UrlPayload =
+    copy(
+        parserType = parserType?.takeUnless { it.isBlank() },
+    )
 
 @Serializable
 private data class CrawlStatusResponse(
     val state: String,
-    val details: Map<String, String?>
+    val details: Map<String, String?>,
 )
 
 @Serializable
 private data class CrawlTriggerResponse(
     val accepted: Boolean,
     val jobId: String?,
-    val message: String?
+    val message: String?,
 )
 
-private fun CrawlStatusSnapshot.toResponse(): CrawlStatusResponse = when (this) {
-    CrawlStatusSnapshot.Idle -> CrawlStatusResponse(
-        state = "idle",
-        details = emptyMap()
+private fun CrawlStatusSnapshot.toResponse(): CrawlStatusResponse =
+    when (this) {
+        CrawlStatusSnapshot.Idle ->
+            CrawlStatusResponse(
+                state = "idle",
+                details = emptyMap(),
+            )
+
+        is CrawlStatusSnapshot.Running ->
+            CrawlStatusResponse(
+                state = "running",
+                details =
+                    mapOf(
+                        "jobId" to activeJobId,
+                        "processed" to processedCount.toString(),
+                        "total" to (totalCount?.toString()),
+                        "startedAt" to startedAt.toString(),
+                        "message" to message,
+                    ),
+            )
+
+        is CrawlStatusSnapshot.Completed ->
+            CrawlStatusResponse(
+                state = "completed",
+                details =
+                    mapOf(
+                        "jobId" to lastJobId,
+                        "completedAt" to completedAt.toString(),
+                        "processed" to processedCount.toString(),
+                        "failures" to failureCount.toString(),
+                        "notes" to notes,
+                    ),
+            )
+    }
+
+private fun CrawlSchedule.toPayload(): SchedulePayload =
+    SchedulePayload(
+        id = id,
+        cron = cron,
+        description = description,
     )
 
-    is CrawlStatusSnapshot.Running -> CrawlStatusResponse(
-        state = "running",
-        details = mapOf(
-            "jobId" to activeJobId,
-            "processed" to processedCount.toString(),
-            "total" to (totalCount?.toString()),
-            "startedAt" to startedAt.toString(),
-            "message" to message
-        )
+private fun SourceUrlRecord.toPayload(): UrlPayload =
+    UrlPayload(
+        id = id,
+        url = url,
+        parserType = parserType.name,
+        status = status.name,
+        lastCrawled = lastCrawled?.toString(),
+        etag = etag,
+        lastModified = lastModified,
+        errorMessage = errorMessage,
     )
 
-    is CrawlStatusSnapshot.Completed -> CrawlStatusResponse(
-        state = "completed",
-        details = mapOf(
-            "jobId" to lastJobId,
-            "completedAt" to completedAt.toString(),
-            "processed" to processedCount.toString(),
-            "failures" to failureCount.toString(),
-            "notes" to notes
-        )
+private fun dev.staticvar.mcp.crawler.server.service.CrawlTriggerResult.toResponse(): CrawlTriggerResponse =
+    CrawlTriggerResponse(
+        accepted = accepted,
+        jobId = jobId,
+        message = message,
     )
-}
 
-private fun CrawlSchedule.toPayload(): SchedulePayload = SchedulePayload(
-    id = id,
-    cron = cron,
-    description = description
-)
-
-private fun SourceUrlRecord.toPayload(): UrlPayload = UrlPayload(
-    id = id,
-    url = url,
-    parserType = parserType.name,
-    status = status.name,
-    lastCrawled = lastCrawled?.toString(),
-    etag = etag,
-    lastModified = lastModified,
-    errorMessage = errorMessage
-)
-
-private fun dev.staticvar.mcp.crawler.server.service.CrawlTriggerResult.toResponse(): CrawlTriggerResponse = CrawlTriggerResponse(
-    accepted = accepted,
-    jobId = jobId,
-    message = message
-)
-
-private fun ApplicationCall.isJsonRequest(): Boolean =
-    request.contentType().withoutParameters().match(ContentType.Application.Json)
+private fun ApplicationCall.isJsonRequest(): Boolean = request.contentType().withoutParameters().match(ContentType.Application.Json)
 
 private fun ApplicationCall.isFormRequest(): Boolean =
     request.contentType().withoutParameters().match(ContentType.Application.FormUrlEncoded)
 
-private fun ApplicationCall.hasRequestBody(): Boolean =
-    request.contentLength()?.let { it > 0 } ?: true
+private fun ApplicationCall.hasRequestBody(): Boolean = request.contentLength()?.let { it > 0 } ?: true
 
 private suspend inline fun <reified T : Any> ApplicationCall.receiveJsonOrNull(): T? =
     runCatching { receive<T>() }

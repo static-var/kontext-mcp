@@ -2,11 +2,23 @@ import React from 'react';
 import { LayoutDashboard, Search, Settings, LogOut, Database } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+export type DashboardSection = 'search' | 'overview' | 'settings';
+
 interface DashboardLayoutProps {
     children: React.ReactNode;
+    activeSection: DashboardSection;
+    onSectionChange: (section: DashboardSection) => void;
+    onSignOut: () => void;
+    signingOut?: boolean;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+    children,
+    activeSection,
+    onSectionChange,
+    onSignOut,
+    signingOut = false,
+}) => {
     return (
         <div className="min-h-screen bg-background flex">
             {/* Sidebar */}
@@ -19,15 +31,40 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-2">
-                    <NavItem icon={<Search className="h-5 w-5" />} label="Search" active />
-                    <NavItem icon={<LayoutDashboard className="h-5 w-5" />} label="Overview" />
-                    <NavItem icon={<Settings className="h-5 w-5" />} label="Settings" />
+                    <NavItem
+                        icon={<Search className="h-5 w-5" />}
+                        label="Search"
+                        active={activeSection === 'search'}
+                        onClick={() => onSectionChange('search')}
+                    />
+                    <NavItem
+                        icon={<LayoutDashboard className="h-5 w-5" />}
+                        label="Overview"
+                        active={activeSection === 'overview'}
+                        onClick={() => onSectionChange('overview')}
+                    />
+                    <NavItem
+                        icon={<Settings className="h-5 w-5" />}
+                        label="Settings"
+                        active={activeSection === 'settings'}
+                        onClick={() => onSectionChange('settings')}
+                    />
                 </nav>
 
                 <div className="p-4 border-t border-border">
-                    <button className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors">
+                    <button
+                        type="button"
+                        onClick={onSignOut}
+                        disabled={signingOut}
+                        className={cn(
+                            'flex items-center gap-3 w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                            signingOut
+                                ? 'text-muted-foreground/60 cursor-not-allowed'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        )}
+                    >
                         <LogOut className="h-5 w-5" />
-                        <span>Sign Out</span>
+                        <span>{signingOut ? 'Signing out…' : 'Sign Out'}</span>
                     </button>
                 </div>
             </aside>
@@ -43,14 +80,25 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     );
 };
 
-const NavItem = ({ icon, label, active = false }: { icon: React.ReactNode, label: string, active?: boolean }) => (
+const NavItem = ({
+    icon,
+    label,
+    active = false,
+    onClick,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    active?: boolean;
+    onClick?: () => void;
+}) => (
     <button
+        type="button"
+        onClick={onClick}
         className={cn(
-            "flex items-center gap-3 w-full px-4 py-3 text-sm font-medium rounded-lg transition-all",
-            active
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            'flex items-center gap-3 w-full px-4 py-3 text-sm font-medium rounded-lg transition-all',
+            active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-accent'
         )}
+        aria-current={active ? 'page' : undefined}
     >
         {icon}
         <span>{label}</span>

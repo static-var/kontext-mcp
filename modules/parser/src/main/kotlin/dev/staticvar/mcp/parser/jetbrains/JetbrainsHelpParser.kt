@@ -6,32 +6,36 @@ import dev.staticvar.mcp.parser.html.BaseHtmlParser
 import dev.staticvar.mcp.parser.html.HtmlSectionExtractor
 import dev.staticvar.mcp.shared.model.ContentType
 import dev.staticvar.mcp.shared.model.ParserType
-import java.net.URI
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.nodes.Document as JsoupDocument
 import org.jsoup.Jsoup
+import java.net.URI
+import org.jsoup.nodes.Document as JsoupDocument
 
 class JetbrainsHelpParser(
-    extractor: HtmlSectionExtractor = HtmlSectionExtractor()
+    extractor: HtmlSectionExtractor = HtmlSectionExtractor(),
 ) : BaseHtmlParser(extractor) {
-
     private val json = Json { ignoreUnknownKeys = true }
+
     @Volatile
     private var lastLinks: List<String> = emptyList()
 
     override val supportedTypes: Set<ParserType> = setOf(ParserType.MKDOCS)
 
-    override fun matches(uri: URI): Boolean =
-        uri.host?.endsWith("jetbrains.com") == true && uri.path.contains("/help/")
+    override fun matches(uri: URI): Boolean = uri.host?.endsWith("jetbrains.com") == true && uri.path.contains("/help/")
 
-    override fun determineContentType(uri: URI, document: JsoupDocument): ContentType = ContentType.GUIDE
+    override fun determineContentType(
+        uri: URI,
+        document: JsoupDocument,
+    ): ContentType = ContentType.GUIDE
 
-    override fun buildMetadata(document: JsoupDocument, uri: URI): Map<String, String> {
+    override fun buildMetadata(
+        document: JsoupDocument,
+        uri: URI,
+    ): Map<String, String> {
         val metadata = mutableMapOf<String, String>()
         document.select("meta[name=description]").firstOrNull()?.attr("content")?.let {
             metadata["description"] = it
@@ -44,13 +48,15 @@ class JetbrainsHelpParser(
         return metadata
     }
 
-    override fun discoverLinks(document: JsoupDocument, uri: URI): List<String> =
-        if (lastLinks.isNotEmpty()) lastLinks else emptyList()
+    override fun discoverLinks(
+        document: JsoupDocument,
+        uri: URI,
+    ): List<String> = if (lastLinks.isNotEmpty()) lastLinks else emptyList()
 
     override suspend fun preprocessDocument(
         request: ParseRequest,
         document: JsoupDocument,
-        context: ParserContext
+        context: ParserContext,
     ): JsoupDocument {
         lastLinks = emptyList()
         val body = document.body() ?: return document
@@ -60,15 +66,19 @@ class JetbrainsHelpParser(
         val topicUrl = baseUri.resolve(topic).toString()
         val bytes = runCatching { loader(topicUrl) }.getOrNull() ?: return document
 
-        val jsonRoot = runCatching { json.parseToJsonElement(bytes.decodeToString()).jsonObject }
-            .getOrNull() ?: return document
+        val jsonRoot =
+            runCatching { json.parseToJsonElement(bytes.decodeToString()).jsonObject }
+                .getOrNull() ?: return document
 
         val rendered = renderWritersideJson(jsonRoot, baseUri)
         lastLinks = rendered.links
         return Jsoup.parse(rendered.html, request.url)
     }
 
-    private fun renderWritersideJson(root: JsonObject, baseUri: URI): RenderedContent {
+    private fun renderWritersideJson(
+        root: JsonObject,
+        baseUri: URI,
+    ): RenderedContent {
         val builder = StringBuilder()
         val links = mutableSetOf<String>()
         root["title"]?.asText()?.let {
@@ -87,7 +97,7 @@ class JetbrainsHelpParser(
         builder: StringBuilder,
         element: JsonElement,
         baseUri: URI,
-        links: MutableSet<String>
+        links: MutableSet<String>,
     ) {
         val obj = element as? JsonObject ?: return
         obj["title"]?.asText()?.let { title ->
@@ -101,7 +111,7 @@ class JetbrainsHelpParser(
         heading: String?,
         element: JsonElement,
         baseUri: URI,
-        links: MutableSet<String>
+        links: MutableSet<String>,
     ) {
         val array = element as? JsonArray ?: return
         if (heading != null) {
@@ -134,6 +144,6 @@ class JetbrainsHelpParser(
 
     private data class RenderedContent(
         val html: String,
-        val links: List<String>
+        val links: List<String>,
     )
 }

@@ -11,7 +11,6 @@ import java.nio.file.Paths
  * Environment variables are resolved via HOCON's `${?VAR}` mechanism.
  */
 object AppConfigLoader {
-
     private const val DEFAULT_CONFIG_PATH = "config/application.conf"
     private const val CONFIG_PATH_ENV = "APP_CONFIG_PATH"
 
@@ -22,13 +21,17 @@ object AppConfigLoader {
      * @param allowMissing When true and the resolved file is missing, fall back to `ConfigFactory.load()`.
      * @throws IllegalStateException when the resolved file is missing and [allowMissing] is false.
      */
-    fun load(overridePath: Path? = null, allowMissing: Boolean = true): AppConfig {
+    fun load(
+        overridePath: Path? = null,
+        allowMissing: Boolean = true,
+    ): AppConfig {
         val resolvedPath = resolvePath(overridePath)
         val fileConfig = parseFileConfig(resolvedPath, allowMissing)
 
-        val mergedConfig = fileConfig
-            .withFallback(ConfigFactory.load())
-            .resolve()
+        val mergedConfig =
+            fileConfig
+                .withFallback(ConfigFactory.load())
+                .resolve()
 
         return mergedConfig.toAppConfig()
     }
@@ -38,79 +41,87 @@ object AppConfigLoader {
             ?: System.getenv(CONFIG_PATH_ENV)?.takeIf { it.isNotBlank() }?.let { Paths.get(it) }
             ?: Paths.get(DEFAULT_CONFIG_PATH)
 
-    private fun parseFileConfig(path: Path, allowMissing: Boolean) =
-        if (Files.exists(path)) {
-            ConfigFactory.parseFile(path.toFile())
-        } else {
-            if (!allowMissing) {
-                error("Configuration file not found at $path")
-            }
-            ConfigFactory.empty()
+    private fun parseFileConfig(
+        path: Path,
+        allowMissing: Boolean,
+    ) = if (Files.exists(path)) {
+        ConfigFactory.parseFile(path.toFile())
+    } else {
+        if (!allowMissing) {
+            error("Configuration file not found at $path")
         }
+        ConfigFactory.empty()
+    }
 
     private fun Config.toAppConfig(): AppConfig {
-        val databaseConfig = getConfig("database").let {
-            DatabaseConfig(
-                host = it.getString("host"),
-                port = it.getInt("port"),
-                database = it.getString("database"),
-                username = it.getString("username"),
-                password = it.getString("password"),
-                maxPoolSize = it.getInt("maxPoolSize")
-            )
-        }
+        val databaseConfig =
+            getConfig("database").let {
+                DatabaseConfig(
+                    host = it.getString("host"),
+                    port = it.getInt("port"),
+                    database = it.getString("database"),
+                    username = it.getString("username"),
+                    password = it.getString("password"),
+                    maxPoolSize = it.getInt("maxPoolSize"),
+                )
+            }
 
-        val embeddingConfig = getConfig("embedding").let {
-            EmbeddingConfig(
-                modelPath = it.getString("modelPath"),
-                modelCacheDir = it.getString("modelCacheDir"),
-                dimension = it.getInt("dimension"),
-                batchSize = it.getInt("batchSize"),
-                maxTokens = it.getInt("maxTokens"),
-                modelFilename = if (it.hasPath("modelFilename")) it.getString("modelFilename") else null,
-                quantized = if (it.hasPath("quantized")) it.getBoolean("quantized") else false
-            )
-        }
+        val embeddingConfig =
+            getConfig("embedding").let {
+                EmbeddingConfig(
+                    modelPath = it.getString("modelPath"),
+                    modelCacheDir = it.getString("modelCacheDir"),
+                    dimension = it.getInt("dimension"),
+                    batchSize = it.getInt("batchSize"),
+                    maxTokens = it.getInt("maxTokens"),
+                    modelFilename = if (it.hasPath("modelFilename")) it.getString("modelFilename") else null,
+                    quantized = if (it.hasPath("quantized")) it.getBoolean("quantized") else false,
+                )
+            }
 
-        val chunkingConfig = getConfig("chunking").let {
-            ChunkingConfig(
-                targetTokens = it.getInt("targetTokens"),
-                overlapTokens = it.getInt("overlapTokens"),
-                maxTokens = it.getInt("maxTokens"),
-                preserveCodeBlocks = it.getBoolean("preserveCodeBlocks"),
-                preserveSectionHierarchy = it.getBoolean("preserveSectionHierarchy")
-            )
-        }
+        val chunkingConfig =
+            getConfig("chunking").let {
+                ChunkingConfig(
+                    targetTokens = it.getInt("targetTokens"),
+                    overlapTokens = it.getInt("overlapTokens"),
+                    maxTokens = it.getInt("maxTokens"),
+                    preserveCodeBlocks = it.getBoolean("preserveCodeBlocks"),
+                    preserveSectionHierarchy = it.getBoolean("preserveSectionHierarchy"),
+                )
+            }
 
-        val retrievalConfig = getConfig("retrieval").let {
-            RetrievalConfig(
-                defaultTokenBudget = it.getInt("defaultTokenBudget"),
-                maxTokenBudget = it.getInt("maxTokenBudget"),
-                defaultSimilarityThreshold = it.getDouble("defaultSimilarityThreshold").toFloat(),
-                topKCandidates = it.getInt("topKCandidates"),
-                enableReranking = it.getBoolean("enableReranking")
-            )
-        }
+        val retrievalConfig =
+            getConfig("retrieval").let {
+                RetrievalConfig(
+                    defaultTokenBudget = it.getInt("defaultTokenBudget"),
+                    maxTokenBudget = it.getInt("maxTokenBudget"),
+                    defaultSimilarityThreshold = it.getDouble("defaultSimilarityThreshold").toFloat(),
+                    topKCandidates = it.getInt("topKCandidates"),
+                    enableReranking = it.getBoolean("enableReranking"),
+                )
+            }
 
-        val crawlerConfig = getConfig("crawler").let {
-            CrawlerConfig(
-                maxConcurrentRequests = it.getInt("maxConcurrentRequests"),
-                requestDelayMs = it.getLong("requestDelayMs"),
-                userAgent = it.getString("userAgent"),
-                timeout = it.getLong("timeout"),
-                retryAttempts = it.getInt("retryAttempts")
-            )
-        }
+        val crawlerConfig =
+            getConfig("crawler").let {
+                CrawlerConfig(
+                    maxConcurrentRequests = it.getInt("maxConcurrentRequests"),
+                    requestDelayMs = it.getLong("requestDelayMs"),
+                    userAgent = it.getString("userAgent"),
+                    timeout = it.getLong("timeout"),
+                    retryAttempts = it.getInt("retryAttempts"),
+                )
+            }
 
-        val rerankingConfig = getConfig("reranking").let {
-            RerankingConfig(
-                enabled = it.hasPath("enabled") && it.getBoolean("enabled"),
-                modelPath = if (it.hasPath("modelPath")) it.getString("modelPath") else "BAAI/bge-reranker-base",
-                modelCacheDir = if (it.hasPath("modelCacheDir")) it.getString("modelCacheDir") else "./models",
-                modelFilename = if (it.hasPath("modelFilename")) it.getString("modelFilename") else null,
-                quantized = if (it.hasPath("quantized")) it.getBoolean("quantized") else false
-            )
-        }
+        val rerankingConfig =
+            getConfig("reranking").let {
+                RerankingConfig(
+                    enabled = it.hasPath("enabled") && it.getBoolean("enabled"),
+                    modelPath = if (it.hasPath("modelPath")) it.getString("modelPath") else "BAAI/bge-reranker-base",
+                    modelCacheDir = if (it.hasPath("modelCacheDir")) it.getString("modelCacheDir") else "./models",
+                    modelFilename = if (it.hasPath("modelFilename")) it.getString("modelFilename") else null,
+                    quantized = if (it.hasPath("quantized")) it.getBoolean("quantized") else false,
+                )
+            }
 
         return AppConfig(
             database = databaseConfig,
@@ -118,7 +129,7 @@ object AppConfigLoader {
             chunking = chunkingConfig,
             retrieval = retrievalConfig,
             reranking = rerankingConfig,
-            crawler = crawlerConfig
+            crawler = crawlerConfig,
         )
     }
 }

@@ -22,7 +22,6 @@ import java.io.Closeable
 import java.nio.file.Path
 
 object CrawlerBootstrap {
-
     suspend fun initialize(configPath: Path? = null): CrawlerComponents {
         val appConfig = AppConfigLoader.load(configPath, allowMissing = configPath == null)
 
@@ -36,28 +35,30 @@ object CrawlerBootstrap {
         val documentRepository = DocumentRepositoryImpl()
         val embeddingRepository = EmbeddingRepositoryImpl()
 
-        val orchestrator = CrawlerOrchestrator(
-            sourceUrlRepository = sourceUrlRepository,
-            documentRepository = documentRepository,
-            embeddingRepository = embeddingRepository,
-            parserRegistry = parserRegistry,
-            embeddingService = embeddingService,
-            chunkingConfig = appConfig.chunking,
-            crawlerConfig = appConfig.crawler,
-            httpClient = httpClient
-        )
+        val orchestrator =
+            CrawlerOrchestrator(
+                sourceUrlRepository = sourceUrlRepository,
+                documentRepository = documentRepository,
+                embeddingRepository = embeddingRepository,
+                parserRegistry = parserRegistry,
+                embeddingService = embeddingService,
+                chunkingConfig = appConfig.chunking,
+                crawlerConfig = appConfig.crawler,
+                httpClient = httpClient,
+            )
 
         val rawScheduleService = DatabaseCrawlScheduleService()
         val coordinator = CrawlSchedulerCoordinator(rawScheduleService, orchestrator)
         val scheduleService = CoordinatedCrawlScheduleService(rawScheduleService, coordinator)
         val sourceService = DatabaseSourceUrlService(sourceUrlRepository, parserRegistry)
 
-        val services = CrawlerServices(
-            status = orchestrator,
-            scheduler = scheduleService,
-            executor = orchestrator,
-            sources = sourceService
-        )
+        val services =
+            CrawlerServices(
+                status = orchestrator,
+                scheduler = scheduleService,
+                executor = orchestrator,
+                sources = sourceService,
+            )
 
         coordinator.reload()
 
@@ -67,18 +68,19 @@ object CrawlerBootstrap {
             orchestrator = orchestrator,
             coordinator = coordinator,
             embeddingService = embeddingService,
-            httpClient = httpClient
+            httpClient = httpClient,
         )
     }
 
-    private fun createHttpClient(config: AppConfig): HttpClient = HttpClient(CIO) {
-        install(HttpTimeout) {
-            val timeoutMillis = config.crawler.timeout
-            requestTimeoutMillis = timeoutMillis
-            connectTimeoutMillis = timeoutMillis
-            socketTimeoutMillis = timeoutMillis
+    private fun createHttpClient(config: AppConfig): HttpClient =
+        HttpClient(CIO) {
+            install(HttpTimeout) {
+                val timeoutMillis = config.crawler.timeout
+                requestTimeoutMillis = timeoutMillis
+                connectTimeoutMillis = timeoutMillis
+                socketTimeoutMillis = timeoutMillis
+            }
         }
-    }
 }
 
 class CrawlerComponents(
@@ -87,9 +89,8 @@ class CrawlerComponents(
     private val orchestrator: CrawlerOrchestrator,
     private val coordinator: CrawlSchedulerCoordinator,
     private val embeddingService: EmbeddingService,
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
 ) : Closeable {
-
     override fun close() {
         runCatching { coordinator.close() }
         runCatching { orchestrator.close() }

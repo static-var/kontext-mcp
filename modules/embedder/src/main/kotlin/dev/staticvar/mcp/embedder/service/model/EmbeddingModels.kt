@@ -4,7 +4,7 @@ package dev.staticvar.mcp.embedder.service.model
  * Batch container for embedding generation.
  */
 data class EmbeddingBatchRequest(
-    val texts: List<String>
+    val texts: List<String>,
 ) {
     init {
         require(texts.isNotEmpty()) { "Embedding batch cannot be empty" }
@@ -21,5 +21,5 @@ data class EmbeddingBatchRequest(
 data class EmbeddingResult(
     val embedding: FloatArray,
     val tokenCount: Int,
-    val truncated: Boolean
+    val truncated: Boolean,
 )

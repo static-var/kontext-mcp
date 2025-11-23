@@ -47,6 +47,9 @@ junit = "5.11.4"  # Verify latest from Maven Central
 mockk = "1.14.6"  # Latest stable (Oct 2025)
 testcontainers = "1.20.4"  # Verify latest from Maven Central
 
+# Tooling
+ktlint-gradle = "12.1.1"  # Gradle ktlint plugin
+
 [libraries]
 # Kotlin
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -140,3 +143,4 @@ testing = ["kotlin-test", "kotlinx-coroutines-test"]
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ktlint-gradle = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }

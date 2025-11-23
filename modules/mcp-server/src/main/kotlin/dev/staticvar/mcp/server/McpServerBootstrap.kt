@@ -19,7 +19,6 @@ import java.nio.file.Path
  * Builds the runtime wiring for the MCP server: configuration, persistence, and services.
  */
 object McpServerBootstrap {
-
     /**
      * Initialize core dependencies needed by the MCP server.
      *
@@ -34,25 +33,26 @@ object McpServerBootstrap {
         val modelDownloader = ModelDownloader(httpClient)
 
         val embeddingService = EmbeddingServiceFactory.createBgeService(config.embedding, httpClient)
-        
+
         val rerankerService = OnnxCrossEncoderReranker(config.reranking, modelDownloader)
         rerankerService.init()
 
         val embeddingRepository: EmbeddingRepository = EmbeddingRepositoryImpl()
-        val searchService = SearchService(
-            embeddingService = embeddingService,
-            embeddingRepository = embeddingRepository,
-            rerankerService = rerankerService,
-            retrievalConfig = config.retrieval,
-            rerankingConfig = config.reranking
-        )
+        val searchService =
+            SearchService(
+                embeddingService = embeddingService,
+                embeddingRepository = embeddingRepository,
+                rerankerService = rerankerService,
+                retrievalConfig = config.retrieval,
+                rerankingConfig = config.reranking,
+            )
 
         return McpServerComponents(
             config = config,
             searchService = searchService,
             embeddingService = embeddingService,
             rerankerService = rerankerService,
-            httpClient = httpClient
+            httpClient = httpClient,
         )
     }
 }
@@ -65,9 +65,8 @@ class McpServerComponents(
     val searchService: SearchService,
     private val embeddingService: EmbeddingService,
     private val rerankerService: RerankerService,
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
 ) : AutoCloseable {
-
     override fun close() {
         runCatching { embeddingService.close() }
         runCatching { rerankerService.close() }

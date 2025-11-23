@@ -13,7 +13,6 @@ import kotlin.time.Instant
  * Common contract for all documentation parsers.
  */
 interface DocumentParser {
-
     /**
      * Parser types supported by this implementation.
      */
@@ -28,7 +27,10 @@ interface DocumentParser {
     /**
      * Parses the given [ParseRequest] into a [ParseResult].
      */
-    suspend fun parse(request: ParseRequest, context: ParserContext = ParserContext()): ParseResult
+    suspend fun parse(
+        request: ParseRequest,
+        context: ParserContext = ParserContext(),
+    ): ParseResult
 }
 
 /**
@@ -43,7 +45,7 @@ data class ParseRequest(
     val url: String,
     val rawBytes: ByteArray,
     val mediaType: String? = null,
-    val fetchedAt: Instant = Clock.System.now()
+    val fetchedAt: Instant = Clock.System.now(),
 ) {
     val rawText: String by lazy(LazyThreadSafetyMode.NONE) {
         rawBytes.toString(Charsets.UTF_8)
@@ -56,7 +58,7 @@ data class ParseRequest(
 data class ParserContext(
     val chunking: ChunkingConfig = ChunkingConfig(),
     val metadata: Map<String, Any?> = emptyMap(),
-    val resourceLoader: (suspend (String) -> ByteArray)? = null
+    val resourceLoader: (suspend (String) -> ByteArray)? = null,
 )
 
 /**
@@ -68,5 +70,5 @@ data class ParserContext(
 data class ParseResult(
     val document: Document,
     val chunks: List<DocumentChunk>,
-    val discoveredLinks: List<String> = emptyList()
+    val discoveredLinks: List<String> = emptyList(),
 )

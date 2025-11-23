@@ -10,12 +10,12 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 
 class DatabaseSourceUrlService(
     private val repository: SourceUrlRepository,
-    private val parserRegistry: ParserRegistry
+    private val parserRegistry: ParserRegistry,
 ) : SourceUrlService {
-
-    override suspend fun list(): List<SourceUrlRecord> = repository
-        .findAll()
-        .map { it.toRecord() }
+    override suspend fun list(): List<SourceUrlRecord> =
+        repository
+            .findAll()
+            .map { it.toRecord() }
 
     override suspend fun add(request: AddSourceUrlRequest): SourceUrlRecord {
         val normalizedUrl = request.url.trim()
@@ -47,16 +47,17 @@ class DatabaseSourceUrlService(
         return ParserType.GENERIC_HTML
     }
 
-    private fun dev.staticvar.mcp.shared.model.SourceUrl.toRecord(): SourceUrlRecord = SourceUrlRecord(
-        id = id,
-        url = url,
-        parserType = parserType,
-        status = status,
-        lastCrawled = lastCrawled,
-        etag = etag,
-        lastModified = lastModified,
-        errorMessage = errorMessage
-    )
+    private fun dev.staticvar.mcp.shared.model.SourceUrl.toRecord(): SourceUrlRecord =
+        SourceUrlRecord(
+            id = id,
+            url = url,
+            parserType = parserType,
+            status = status,
+            lastCrawled = lastCrawled,
+            etag = etag,
+            lastModified = lastModified,
+            errorMessage = errorMessage,
+        )
 
     private companion object {
         private val logger = KotlinLogging.logger {}

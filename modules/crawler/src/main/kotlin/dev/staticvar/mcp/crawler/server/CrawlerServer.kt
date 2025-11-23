@@ -16,23 +16,24 @@ import kotlinx.coroutines.runBlocking
 /**
  * Entry point for launching the crawler web server.
  */
-fun main(): Unit = runBlocking {
-    val hoconConfig = HoconApplicationConfig(ConfigFactory.load())
-    val crawlerConfig = CrawlerConfig.load(hoconConfig)
+fun main(): Unit =
+    runBlocking {
+        val hoconConfig = HoconApplicationConfig(ConfigFactory.load())
+        val crawlerConfig = CrawlerConfig.load(hoconConfig)
 
-    val host = hoconConfig.propertyOrNull("ktor.deployment.host")?.getString() ?: "0.0.0.0"
-    val port = hoconConfig.propertyOrNull("ktor.deployment.port")?.getString()?.toIntOrNull() ?: 8080
+        val host = hoconConfig.propertyOrNull("ktor.deployment.host")?.getString() ?: "0.0.0.0"
+        val port = hoconConfig.propertyOrNull("ktor.deployment.port")?.getString()?.toIntOrNull() ?: 8080
 
-    val components = CrawlerBootstrap.initialize()
+        val components = CrawlerBootstrap.initialize()
 
-    try {
-        embeddedServer(Netty, host = host, port = port) {
-            installCrawlerModule(components, crawlerConfig)
-        }.start(wait = true)
-    } finally {
-        components.close()
+        try {
+            embeddedServer(Netty, host = host, port = port) {
+                installCrawlerModule(components, crawlerConfig)
+            }.start(wait = true)
+        } finally {
+            components.close()
+        }
     }
-}
 
 /**
  * Ktor deploy hook invoked by the engine.
@@ -47,7 +48,7 @@ private val ComponentsKey = AttributeKey<CrawlerComponents>("crawler.components"
 
 private fun Application.installCrawlerModule(
     components: CrawlerComponents,
-    config: CrawlerConfig
+    config: CrawlerConfig,
 ) {
     attributes.put(ComponentsKey, components)
     environment.monitor.subscribe(ApplicationStopping) {
@@ -57,6 +58,6 @@ private fun Application.installCrawlerModule(
 
     crawlerModule(
         config = config,
-        services = components.services
+        services = components.services,
     )
 }

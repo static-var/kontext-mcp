@@ -10,9 +10,8 @@ import java.nio.file.Path
  */
 class HuggingFaceEmbeddingTokenizer private constructor(
     private val tokenizer: HuggingFaceTokenizer,
-    private val maxTokens: Int
+    private val maxTokens: Int,
 ) : EmbeddingTokenizer {
-
     override fun tokenize(text: String): TokenizedInput {
         val encoding = tokenizer.encode(text)
         val ids = encoding.ids()
@@ -24,7 +23,7 @@ class HuggingFaceEmbeddingTokenizer private constructor(
             attentionMask = attentionMask,
             tokenTypeIds = if (typeIds.allZero()) null else typeIds,
             tokenCount = attentionMask.count { it == 1L },
-            truncated = encoding.exceedMaxLength()
+            truncated = encoding.exceedMaxLength(),
         )
     }
 
@@ -34,26 +33,32 @@ class HuggingFaceEmbeddingTokenizer private constructor(
 
     companion object {
         /**
-            * Builds a tokenizer using the provided [tokenizerPath].
-            */
+         * Builds a tokenizer using the provided [tokenizerPath].
+         */
         @Throws(IOException::class)
-        fun create(tokenizerPath: Path, maxTokens: Int): HuggingFaceEmbeddingTokenizer {
-            val tokenizer = HuggingFaceTokenizer.builder()
-                .optTokenizerPath(tokenizerPath)
-                .optAddSpecialTokens(true)
-                .optPadding(true)
-                .optPadToMaxLength()
-                .optTruncation(true)
-                .optMaxLength(maxTokens)
-                .build()
+        fun create(
+            tokenizerPath: Path,
+            maxTokens: Int,
+        ): HuggingFaceEmbeddingTokenizer {
+            val tokenizer =
+                HuggingFaceTokenizer.builder()
+                    .optTokenizerPath(tokenizerPath)
+                    .optAddSpecialTokens(true)
+                    .optPadding(true)
+                    .optPadToMaxLength()
+                    .optTruncation(true)
+                    .optMaxLength(maxTokens)
+                    .build()
 
             return HuggingFaceEmbeddingTokenizer(tokenizer, maxTokens)
         }
-
     }
 }
 
 private fun Encoding.ids(): LongArray = getIds()
+
 private fun Encoding.attentionMask(): LongArray = getAttentionMask()
+
 private fun Encoding.typeIds(): LongArray = getTypeIds()
+
 private fun LongArray.allZero(): Boolean = all { it == 0L }

@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RetrievalMetricsTest {
-
     @Test
     fun `precision at K counts relevant entries`() {
         val flags = listOf(true, false, true, false)
@@ -28,13 +27,14 @@ class RetrievalMetricsTest {
 
     @Test
     fun `mean reciprocal rank averages queries`() {
-        val rr = RetrievalMetrics.meanReciprocalRank(
-            listOf(
-                listOf(true, false),
-                listOf(false, true),
-                listOf(false, false)
+        val rr =
+            RetrievalMetrics.meanReciprocalRank(
+                listOf(
+                    listOf(true, false),
+                    listOf(false, true),
+                    listOf(false, false),
+                ),
             )
-        )
         val expected = (1.0 + 0.5 + 0.0) / 3.0
         assertEquals(expected, rr, 1e-6)
     }

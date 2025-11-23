@@ -16,7 +16,7 @@ data class Document(
     val contentType: ContentType,
     val metadata: Map<String, String>,
     @Serializable(with = InstantIso8601Serializer::class)
-    val lastIndexed: Instant
+    val lastIndexed: Instant,
 )
 
 /**
@@ -28,7 +28,7 @@ data class DocumentChunk(
     val content: String,
     val sectionHierarchy: List<String> = emptyList(),
     val codeLanguage: String? = null,
-    val metadata: Map<String, String> = emptyMap()
+    val metadata: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -41,7 +41,7 @@ data class EmbeddedChunk(
     val content: String,
     val embedding: FloatArray,
     val metadata: Map<String, String>,
-    val tokenCount: Int
+    val tokenCount: Int,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

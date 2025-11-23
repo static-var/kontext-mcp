@@ -6,14 +6,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TokenMetricsTest {
-
     @Test
     fun `computes totals`() {
-        val inputs = listOf(
-            tokenized(tokenCount = 2),
-            tokenized(tokenCount = 4),
-            tokenized(tokenCount = 1)
-        )
+        val inputs =
+            listOf(
+                tokenized(tokenCount = 2),
+                tokenized(tokenCount = 4),
+                tokenized(tokenCount = 1),
+            )
 
         assertEquals(7, TokenMetrics.totalTokens(inputs))
         assertEquals(4, TokenMetrics.maxTokens(inputs))
@@ -27,7 +27,7 @@ class TokenMetricsTest {
             attentionMask = mask,
             tokenTypeIds = null,
             tokenCount = tokenCount,
-            truncated = false
+            truncated = false,
         )
     }
 }

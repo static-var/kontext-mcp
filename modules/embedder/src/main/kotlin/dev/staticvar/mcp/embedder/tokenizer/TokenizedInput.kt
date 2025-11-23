@@ -8,7 +8,7 @@ data class TokenizedInput(
     val attentionMask: LongArray,
     val tokenTypeIds: LongArray?,
     val tokenCount: Int,
-    val truncated: Boolean
+    val truncated: Boolean,
 ) {
     val sequenceLength: Int
         get() = inputIds.size

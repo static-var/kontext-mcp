@@ -12,32 +12,34 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 
 class DocumentRepositoryImpl : DocumentRepository {
+    override suspend fun insert(document: Document): Int =
+        dbQuery {
+            DocumentsTable.insert {
+                it[DocumentsTable.sourceUrl] = document.sourceUrl
+                it[DocumentsTable.title] = document.title
+                it[DocumentsTable.contentType] = document.contentType
+                it[DocumentsTable.metadata] = document.metadata
+                it[DocumentsTable.lastIndexed] = document.lastIndexed
+            }[DocumentsTable.id].value
+        }
 
-    override suspend fun insert(document: Document): Int = dbQuery {
-        DocumentsTable.insert {
-            it[DocumentsTable.sourceUrl] = document.sourceUrl
-            it[DocumentsTable.title] = document.title
-            it[DocumentsTable.contentType] = document.contentType
-            it[DocumentsTable.metadata] = document.metadata
-            it[DocumentsTable.lastIndexed] = document.lastIndexed
-        }[DocumentsTable.id].value
-    }
+    override suspend fun findById(id: Int): Document? =
+        dbQuery {
+            DocumentsTable
+                .selectAll()
+                .where { DocumentsTable.id eq id }
+                .singleOrNull()
+                ?.toDocument()
+        }
 
-    override suspend fun findById(id: Int): Document? = dbQuery {
-        DocumentsTable
-            .selectAll()
-            .where { DocumentsTable.id eq id }
-            .singleOrNull()
-            ?.toDocument()
-    }
-
-    override suspend fun findBySourceUrl(sourceUrl: String): List<Document> = dbQuery {
-        DocumentsTable
-            .selectAll()
-            .where { DocumentsTable.sourceUrl eq sourceUrl }
-            .orderBy(DocumentsTable.lastIndexed to SortOrder.DESC)
-            .map { it.toDocument() }
-    }
+    override suspend fun findBySourceUrl(sourceUrl: String): List<Document> =
+        dbQuery {
+            DocumentsTable
+                .selectAll()
+                .where { DocumentsTable.sourceUrl eq sourceUrl }
+                .orderBy(DocumentsTable.lastIndexed to SortOrder.DESC)
+                .map { it.toDocument() }
+        }
 
     override suspend fun deleteBySourceUrl(sourceUrl: String) {
         dbQuery {
@@ -52,6 +54,6 @@ class DocumentRepositoryImpl : DocumentRepository {
             title = this[DocumentsTable.title],
             contentType = this[DocumentsTable.contentType],
             metadata = this[DocumentsTable.metadata],
-            lastIndexed = this[DocumentsTable.lastIndexed]
+            lastIndexed = this[DocumentsTable.lastIndexed],
         )
 }

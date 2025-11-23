@@ -20,62 +20,66 @@ class SearchService(
     private val embeddingRepository: EmbeddingRepository,
     private val rerankerService: RerankerService,
     private val retrievalConfig: RetrievalConfig,
-    private val rerankingConfig: RerankingConfig
+    private val rerankingConfig: RerankingConfig,
 ) {
-
     private val logger = KotlinLogging.logger { }
 
     suspend fun search(request: SearchRequest): SearchResponse {
         val tokenBudget = resolveTokenBudget(request.tokenBudget)
         val similarityThreshold = resolveSimilarityThreshold(request.similarityThreshold)
 
-        val embeddingResult = embeddingService.embed(
-            EmbeddingBatchRequest(listOf(request.query))
-        ).firstOrNull() ?: error("Embedding service returned no results for query.")
+        val embeddingResult =
+            embeddingService.embed(
+                EmbeddingBatchRequest(listOf(request.query)),
+            ).firstOrNull() ?: error("Embedding service returned no results for query.")
 
         if (embeddingResult.truncated) {
             logger.warn { "Query text exceeded embedding token limit (${embeddingService.maxTokens}); search results may degrade." }
         }
 
         // Fetch more candidates if reranking is enabled to improve recall before precision refinement
-        val candidateLimit = if (rerankingConfig.enabled) {
-            retrievalConfig.topKCandidates * 5
-        } else {
-            retrievalConfig.topKCandidates
-        }
+        val candidateLimit =
+            if (rerankingConfig.enabled) {
+                retrievalConfig.topKCandidates * 5
+            } else {
+                retrievalConfig.topKCandidates
+            }
 
-        var scoredChunks = embeddingRepository.search(
-            queryEmbedding = embeddingResult.embedding,
-            limit = candidateLimit,
-            similarityThreshold = similarityThreshold,
-            filters = request.filters
-        )
+        var scoredChunks =
+            embeddingRepository.search(
+                queryEmbedding = embeddingResult.embedding,
+                limit = candidateLimit,
+                similarityThreshold = similarityThreshold,
+                filters = request.filters,
+            )
 
         if (rerankingConfig.enabled && scoredChunks.isNotEmpty()) {
             logger.debug { "Reranking ${scoredChunks.size} candidates for query: ${request.query}" }
             val documents = scoredChunks.map { it.content }
             val rerankedIndices = rerankerService.rerank(request.query, documents)
-            
-            scoredChunks = rerankedIndices.map { scoredChunks[it] }
-                .take(retrievalConfig.topKCandidates)
+
+            scoredChunks =
+                rerankedIndices.map { scoredChunks[it] }
+                    .take(retrievalConfig.topKCandidates)
         }
 
         val packed = packResults(scoredChunks, tokenBudget)
-        val retrievedChunks = packed.chunks.map { chunk ->
-            RetrievedChunk(
-                content = chunk.content,
-                source = chunk.sourceUrl,
-                similarity = chunk.similarity,
-                metadata = chunk.metadata
-            )
-        }
+        val retrievedChunks =
+            packed.chunks.map { chunk ->
+                RetrievedChunk(
+                    content = chunk.content,
+                    source = chunk.sourceUrl,
+                    similarity = chunk.similarity,
+                    metadata = chunk.metadata,
+                )
+            }
 
         val confidence = if (retrievedChunks.isEmpty()) 0f else packed.similaritySum / retrievedChunks.size
 
         return SearchResponse(
             chunks = retrievedChunks,
             totalTokens = packed.totalTokens,
-            confidence = confidence
+            confidence = confidence,
         )
     }
 
@@ -92,7 +96,10 @@ class SearchService(
         return retrievalConfig.defaultSimilarityThreshold.coerceIn(0f, 1f)
     }
 
-    private fun packResults(chunks: List<ScoredChunk>, tokenBudget: Int): PackedResults {
+    private fun packResults(
+        chunks: List<ScoredChunk>,
+        tokenBudget: Int,
+    ): PackedResults {
         if (chunks.isEmpty()) return PackedResults(emptyList(), 0, 0f)
 
         val selected = mutableListOf<ScoredChunk>()
@@ -122,6 +129,6 @@ class SearchService(
     private data class PackedResults(
         val chunks: List<ScoredChunk>,
         val totalTokens: Int,
-        val similaritySum: Float
+        val similaritySum: Float,
     )
 }

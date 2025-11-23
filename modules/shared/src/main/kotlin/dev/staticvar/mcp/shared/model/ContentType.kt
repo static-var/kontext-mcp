@@ -30,5 +30,5 @@ enum class ContentType {
     ARTICLE,
 
     /** Unknown or mixed content */
-    UNKNOWN
+    UNKNOWN,
 }

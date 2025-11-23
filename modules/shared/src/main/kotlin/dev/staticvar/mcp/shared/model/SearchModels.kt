@@ -15,7 +15,7 @@ data class SearchRequest(
     val query: String,
     val tokenBudget: Int? = null,
     val filters: Map<String, String>? = null,
-    val similarityThreshold: Float = 0.7f
+    val similarityThreshold: Float = 0.7f,
 )
 
 /**
@@ -29,7 +29,7 @@ data class SearchRequest(
 data class SearchResponse(
     val chunks: List<RetrievedChunk>,
     val totalTokens: Int,
-    val confidence: Float
+    val confidence: Float,
 )
 
 /**
@@ -45,5 +45,5 @@ data class RetrievedChunk(
     val content: String,
     val source: String,
     val similarity: Float,
-    val metadata: Map<String, String>
+    val metadata: Map<String, String>,
 )

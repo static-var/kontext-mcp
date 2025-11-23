@@ -8,7 +8,6 @@ import dev.staticvar.mcp.embedder.service.model.EmbeddingResult
  * Implementations may rely on different backends (ONNX Runtime, remote APIs, etc.).
  */
 interface EmbeddingService : AutoCloseable {
-
     /**
      * Dimension of the produced embedding vectors.
      */

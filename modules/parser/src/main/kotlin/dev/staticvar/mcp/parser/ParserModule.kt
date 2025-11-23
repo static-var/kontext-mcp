@@ -7,12 +7,13 @@ import dev.staticvar.mcp.parser.kotlinlang.KotlinLangParser
 import dev.staticvar.mcp.parser.registry.ParserRegistry
 
 object ParserModule {
-    fun defaultRegistry(): ParserRegistry = ParserRegistry(
-        listOf(
-            AndroidDocsParser(),
-            KotlinLangParser(),
-            JetbrainsHelpParser(),
-            GenericHtmlParser()
+    fun defaultRegistry(): ParserRegistry =
+        ParserRegistry(
+            listOf(
+                AndroidDocsParser(),
+                KotlinLangParser(),
+                JetbrainsHelpParser(),
+                GenericHtmlParser(),
+            ),
         )
-    )
 }

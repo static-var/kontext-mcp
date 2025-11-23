@@ -1,7 +1,10 @@
 package dev.staticvar.mcp.server.evaluation
 
 object RetrievalMetrics {
-    fun precisionAtK(relevanceFlags: List<Boolean>, k: Int): Double {
+    fun precisionAtK(
+        relevanceFlags: List<Boolean>,
+        k: Int,
+    ): Double {
         require(k > 0) { "k must be positive" }
         if (relevanceFlags.isEmpty()) return 0.0
         val limit = k.coerceAtMost(relevanceFlags.size)
@@ -9,7 +12,11 @@ object RetrievalMetrics {
         return relevant.toDouble() / limit
     }
 
-    fun recallAtK(relevanceFlags: List<Boolean>, totalRelevant: Int, k: Int): Double {
+    fun recallAtK(
+        relevanceFlags: List<Boolean>,
+        totalRelevant: Int,
+        k: Int,
+    ): Double {
         require(totalRelevant >= 0) { "totalRelevant must be non-negative" }
         if (totalRelevant == 0) return 0.0
         if (relevanceFlags.isEmpty()) return 0.0

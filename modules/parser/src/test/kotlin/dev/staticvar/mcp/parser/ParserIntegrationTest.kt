@@ -11,15 +11,14 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.contentType
+import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlinx.coroutines.runBlocking
 
 class ParserIntegrationTest {
-
     private lateinit var client: HttpClient
     private lateinit var registry: ParserRegistry
 
@@ -35,67 +34,73 @@ class ParserIntegrationTest {
     }
 
     @Test
-    fun `parse android baseline profiles overview`() = runBlocking {
-        val url = "https://developer.android.com/topic/performance/baselineprofiles/overview"
-        val parser = registry.forType(ParserType.ANDROID_DOCS)!!
-        val request = fetch(url)
-        val result = parser.parse(request, defaultContext())
+    fun `parse android baseline profiles overview`() =
+        runBlocking {
+            val url = "https://developer.android.com/topic/performance/baselineprofiles/overview"
+            val parser = registry.forType(ParserType.ANDROID_DOCS)!!
+            val request = fetch(url)
+            val result = parser.parse(request, defaultContext())
 
-        assertEquals(ContentType.GUIDE, result.document.contentType)
-        assertTrue(result.chunks.isNotEmpty())
-        assertTrue(result.discoveredLinks.any { it.contains("baselineprofiles") })
-    }
-
-    @Test
-    fun `parse android room release notes`() = runBlocking {
-        val url = "https://developer.android.com/jetpack/androidx/releases/room"
-        val parser = registry.forType(ParserType.ANDROID_DOCS)!!
-        val result = parser.parse(fetch(url), defaultContext())
-
-        assertEquals(ContentType.RELEASE_NOTES, result.document.contentType)
-        assertTrue(result.chunks.isNotEmpty())
-    }
+            assertEquals(ContentType.GUIDE, result.document.contentType)
+            assertTrue(result.chunks.isNotEmpty())
+            assertTrue(result.discoveredLinks.any { it.contains("baselineprofiles") })
+        }
 
     @Test
-    fun `parse android room api reference`() = runBlocking {
-        val url = "https://developer.android.com/reference/androidx/room/Room"
-        val parser = registry.forType(ParserType.ANDROID_DOCS)!!
-        val result = parser.parse(fetch(url), defaultContext())
+    fun `parse android room release notes`() =
+        runBlocking {
+            val url = "https://developer.android.com/jetpack/androidx/releases/room"
+            val parser = registry.forType(ParserType.ANDROID_DOCS)!!
+            val result = parser.parse(fetch(url), defaultContext())
 
-        assertEquals(ContentType.API_REFERENCE, result.document.contentType)
-        assertTrue(result.chunks.isNotEmpty())
-    }
-
-    @Test
-    fun `parse jetbrains exposed docs`() = runBlocking {
-        val url = "https://www.jetbrains.com/help/exposed/home.html"
-        val parser = registry.forType(ParserType.MKDOCS)!!
-        val result = parser.parse(fetch(url), defaultContext())
-
-        assertEquals(ContentType.GUIDE, result.document.contentType)
-        assertTrue(result.chunks.isNotEmpty())
-        assertTrue(result.discoveredLinks.isNotEmpty())
-    }
+            assertEquals(ContentType.RELEASE_NOTES, result.document.contentType)
+            assertTrue(result.chunks.isNotEmpty())
+        }
 
     @Test
-    fun `parse kotlin releases changelog`() = runBlocking {
-        val url = "https://kotlinlang.org/docs/releases.html"
-        val parser = registry.forType(ParserType.KOTLIN_LANG)!!
-        val result = parser.parse(fetch(url), defaultContext())
+    fun `parse android room api reference`() =
+        runBlocking {
+            val url = "https://developer.android.com/reference/androidx/room/Room"
+            val parser = registry.forType(ParserType.ANDROID_DOCS)!!
+            val result = parser.parse(fetch(url), defaultContext())
 
-        assertEquals(ContentType.RELEASE_NOTES, result.document.contentType)
-        assertTrue(result.chunks.isNotEmpty())
-    }
+            assertEquals(ContentType.API_REFERENCE, result.document.contentType)
+            assertTrue(result.chunks.isNotEmpty())
+        }
 
     @Test
-    fun `parse kotlin idioms guide`() = runBlocking {
-        val url = "https://kotlinlang.org/docs/idioms.html"
-        val parser = registry.forType(ParserType.KOTLIN_LANG)!!
-        val result = parser.parse(fetch(url), defaultContext())
+    fun `parse jetbrains exposed docs`() =
+        runBlocking {
+            val url = "https://www.jetbrains.com/help/exposed/home.html"
+            val parser = registry.forType(ParserType.MKDOCS)!!
+            val result = parser.parse(fetch(url), defaultContext())
 
-        assertEquals(ContentType.GUIDE, result.document.contentType)
-        assertTrue(result.chunks.isNotEmpty())
-    }
+            assertEquals(ContentType.GUIDE, result.document.contentType)
+            assertTrue(result.chunks.isNotEmpty())
+            assertTrue(result.discoveredLinks.isNotEmpty())
+        }
+
+    @Test
+    fun `parse kotlin releases changelog`() =
+        runBlocking {
+            val url = "https://kotlinlang.org/docs/releases.html"
+            val parser = registry.forType(ParserType.KOTLIN_LANG)!!
+            val result = parser.parse(fetch(url), defaultContext())
+
+            assertEquals(ContentType.RELEASE_NOTES, result.document.contentType)
+            assertTrue(result.chunks.isNotEmpty())
+        }
+
+    @Test
+    fun `parse kotlin idioms guide`() =
+        runBlocking {
+            val url = "https://kotlinlang.org/docs/idioms.html"
+            val parser = registry.forType(ParserType.KOTLIN_LANG)!!
+            val result = parser.parse(fetch(url), defaultContext())
+
+            assertEquals(ContentType.GUIDE, result.document.contentType)
+            assertTrue(result.chunks.isNotEmpty())
+        }
 
     private suspend fun fetch(url: String): ParseRequest {
         val response: HttpResponse = client.get(url)
@@ -104,7 +109,7 @@ class ParserIntegrationTest {
         return ParseRequest(
             url = url,
             rawBytes = bytes,
-            mediaType = mediaType
+            mediaType = mediaType,
         )
     }
 

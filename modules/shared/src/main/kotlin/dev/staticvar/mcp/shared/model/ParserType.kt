@@ -21,5 +21,5 @@ enum class ParserType {
     GITHUB,
 
     /** Fallback generic HTML parser */
-    GENERIC_HTML
+    GENERIC_HTML,
 }

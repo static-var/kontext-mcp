@@ -7,9 +7,8 @@ import dev.staticvar.mcp.shared.model.ParserType
  * Registry that maps [ParserType] or URL patterns to concrete [DocumentParser] implementations.
  */
 class ParserRegistry(
-    parsers: Collection<DocumentParser>
+    parsers: Collection<DocumentParser>,
 ) {
-
     private val byType: Map<ParserType, DocumentParser>
     private val parserList: List<DocumentParser> = parsers.toList()
 
@@ -42,8 +41,7 @@ class ParserRegistry(
     /**
      * Attempts to find a parser capable of handling [url].
      */
-    suspend fun forUrl(url: String): DocumentParser? =
-        parserList.firstOrNull { parser -> parser.handles(url) }
+    suspend fun forUrl(url: String): DocumentParser? = parserList.firstOrNull { parser -> parser.handles(url) }
 
     /**
      * Convenience accessor listing all registered parsers.

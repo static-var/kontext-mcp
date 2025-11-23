@@ -13,16 +13,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate login delay
-        setTimeout(() => {
+        
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ username, password }),
+            });
+
+            if (response.ok) {
+                onLogin();
+            } else {
+                // Handle error (could add error state to UI)
+                console.error('Login failed');
+            }
+        } catch (error) {
+            console.error('Login error', error);
+        } finally {
             setIsLoading(false);
-            // Mock successful login
-            console.log('Logged in:', { username, password });
-            onLogin();
-        }, 1500);
+        }
     };
 
     return (

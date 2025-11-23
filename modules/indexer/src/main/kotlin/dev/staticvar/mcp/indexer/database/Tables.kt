@@ -16,37 +16,41 @@ import org.jetbrains.exposed.v1.datetime.timestamp
  */
 object SourceUrlsTable : IntIdTable("source_urls") {
     val url = text("url").uniqueIndex()
-    val parserType = customEnumeration(
-        "parser_type",
-        "parser_type",
-        { value -> ParserType.valueOf(value as String) },
-        { PgEnum("parser_type", it) }
-    )
+    val parserType =
+        customEnumeration(
+            "parser_type",
+            "parser_type",
+            { value -> ParserType.valueOf(value as String) },
+            { PgEnum("parser_type", it) },
+        )
     val enabled = bool("enabled").default(true)
     val lastCrawled = timestamp("last_crawled").nullable()
     val etag = text("etag").nullable()
     val lastModified = text("last_modified").nullable()
-    val status = customEnumeration(
-        "status",
-        "crawl_status",
-        { value -> CrawlStatus.valueOf(value as String) },
-        { PgEnum("crawl_status", it) }
-    ).default(CrawlStatus.PENDING)
+    val status =
+        customEnumeration(
+            "status",
+            "crawl_status",
+            { value -> CrawlStatus.valueOf(value as String) },
+            { PgEnum("crawl_status", it) },
+        ).default(CrawlStatus.PENDING)
     val errorMessage = text("error_message").nullable()
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 }
 
 object DocumentsTable : IntIdTable("documents") {
-    val sourceUrl = text("source_url")
-        .references(SourceUrlsTable.url, onDelete = ReferenceOption.CASCADE)
+    val sourceUrl =
+        text("source_url")
+            .references(SourceUrlsTable.url, onDelete = ReferenceOption.CASCADE)
     val title = text("title")
-    val contentType = customEnumeration(
-        "content_type",
-        "content_type",
-        { value -> ContentType.valueOf(value as String) },
-        { PgEnum("content_type", it) }
-    )
+    val contentType =
+        customEnumeration(
+            "content_type",
+            "content_type",
+            { value -> ContentType.valueOf(value as String) },
+            { PgEnum("content_type", it) },
+        )
     val metadata = jsonbMap("metadata")
     val lastIndexed = timestamp("last_indexed")
     val createdAt = timestamp("created_at")
@@ -54,8 +58,9 @@ object DocumentsTable : IntIdTable("documents") {
 }
 
 object EmbeddingsTable : IntIdTable("embeddings") {
-    val documentId = integer("document_id")
-        .references(DocumentsTable.id, onDelete = ReferenceOption.CASCADE)
+    val documentId =
+        integer("document_id")
+            .references(DocumentsTable.id, onDelete = ReferenceOption.CASCADE)
     val chunkIndex = integer("chunk_index")
     val content = text("content")
     val embedding = vector("embedding", dimension = 1024)

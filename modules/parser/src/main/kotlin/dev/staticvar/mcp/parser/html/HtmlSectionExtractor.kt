@@ -10,16 +10,19 @@ import org.jsoup.nodes.Element
  * preserving heading hierarchy and code blocks.
  */
 class HtmlSectionExtractor {
-
-    fun extract(rawHtml: String, baseUrl: String? = null): List<ContentSection> {
+    fun extract(
+        rawHtml: String,
+        baseUrl: String? = null,
+    ): List<ContentSection> {
         val document = Jsoup.parse(rawHtml, baseUrl ?: "")
         return extract(document)
     }
 
     fun extract(document: Document): List<ContentSection> {
         val body = document.body() ?: return emptyList()
-        val contentRoot = body.selectFirst("main, article, div.devsite-article-body, div.docs-article, div[class*=article-body]")
-            ?: body
+        val contentRoot =
+            body.selectFirst("main, article, div.devsite-article-body, div.docs-article, div[class*=article-body]")
+                ?: body
         val sections = mutableListOf<ContentSection>()
         val hierarchy = ArrayDeque<String>()
         val buffer = StringBuilder()
@@ -31,12 +34,13 @@ class HtmlSectionExtractor {
                 return
             }
 
-            sections += ContentSection(
-                title = hierarchy.lastOrNull(),
-                hierarchy = hierarchy.toList(),
-                body = text,
-                metadata = emptyMap()
-            )
+            sections +=
+                ContentSection(
+                    title = hierarchy.lastOrNull(),
+                    hierarchy = hierarchy.toList(),
+                    body = text,
+                    metadata = emptyMap(),
+                )
 
             buffer.clear()
         }
@@ -56,13 +60,14 @@ class HtmlSectionExtractor {
                     val codeText = codeElement?.wholeText() ?: element.text()
                     val language = extractLanguage(codeElement)
                     val formatted = formatCodeBlock(codeText.trim(), language)
-                    sections += ContentSection(
-                        title = hierarchy.lastOrNull(),
-                        hierarchy = hierarchy.toList(),
-                        body = formatted,
-                        metadata = mapOf("section_type" to "code"),
-                        codeLanguage = language
-                    )
+                    sections +=
+                        ContentSection(
+                            title = hierarchy.lastOrNull(),
+                            hierarchy = hierarchy.toList(),
+                            body = formatted,
+                            metadata = mapOf("section_type" to "code"),
+                            codeLanguage = language,
+                        )
                 }
 
                 element.tagName() == "table" -> {
@@ -86,7 +91,10 @@ class HtmlSectionExtractor {
         return sections
     }
 
-    private fun appendBlock(buffer: StringBuilder, text: String) {
+    private fun appendBlock(
+        buffer: StringBuilder,
+        text: String,
+    ) {
         if (buffer.isNotEmpty()) buffer.append("\n\n")
         buffer.append(text)
     }
@@ -98,7 +106,10 @@ class HtmlSectionExtractor {
             ?.takeIf { it.isNotBlank() }
     }
 
-    private fun renderList(element: Element, ordered: Boolean): String {
+    private fun renderList(
+        element: Element,
+        ordered: Boolean,
+    ): String {
         val items = element.select("> li")
         if (items.isEmpty()) return element.text()
         val builder = StringBuilder()
@@ -112,9 +123,10 @@ class HtmlSectionExtractor {
     private fun renderTable(element: Element): String {
         val rows = element.select("tr")
         if (rows.isEmpty()) return element.text()
-        val table = rows.map { row ->
-            row.select("th, td").map { cell -> cell.text().trim() }
-        }
+        val table =
+            rows.map { row ->
+                row.select("th, td").map { cell -> cell.text().trim() }
+            }
 
         val columnWidths = mutableListOf<Int>()
         table.forEach { row ->
@@ -148,7 +160,10 @@ class HtmlSectionExtractor {
         return builder.toString().trim()
     }
 
-    private fun formatCodeBlock(code: String, language: String?): String =
+    private fun formatCodeBlock(
+        code: String,
+        language: String?,
+    ): String =
         buildString {
             append("```")
             if (!language.isNullOrBlank()) append(language)

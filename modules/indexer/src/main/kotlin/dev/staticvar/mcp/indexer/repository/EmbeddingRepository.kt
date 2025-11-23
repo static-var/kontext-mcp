@@ -4,11 +4,12 @@ import dev.staticvar.mcp.shared.model.EmbeddedChunk
 
 interface EmbeddingRepository {
     suspend fun insertBatch(chunks: List<EmbeddedChunk>)
+
     suspend fun search(
         queryEmbedding: FloatArray,
         limit: Int,
         similarityThreshold: Float,
-        filters: Map<String, String>? = null
+        filters: Map<String, String>? = null,
     ): List<ScoredChunk>
 
     suspend fun deleteByDocumentId(documentId: Int)
@@ -19,5 +20,5 @@ data class ScoredChunk(
     val sourceUrl: String,
     val similarity: Float,
     val metadata: Map<String, String>,
-    val tokenCount: Int
+    val tokenCount: Int,
 )

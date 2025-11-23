@@ -14,13 +14,13 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 
 class DatabaseCrawlScheduleService : CrawlScheduleService {
-
-    override suspend fun list(): List<CrawlSchedule> = dbQuery {
-        CrawlSchedulesTable
-            .selectAll()
-            .orderBy(CrawlSchedulesTable.id to SortOrder.ASC)
-            .map { it.toModel() }
-    }
+    override suspend fun list(): List<CrawlSchedule> =
+        dbQuery {
+            CrawlSchedulesTable
+                .selectAll()
+                .orderBy(CrawlSchedulesTable.id to SortOrder.ASC)
+                .map { it.toModel() }
+        }
 
     override suspend fun upsert(request: UpsertScheduleRequest): CrawlSchedule {
         val cron = request.cron.trim()
@@ -29,28 +29,30 @@ class DatabaseCrawlScheduleService : CrawlScheduleService {
         return dbQuery {
             val identifier = request.id?.toIntOrNull()
 
-            val idValue = if (identifier == null) {
-                CrawlSchedulesTable.insert {
-                    it[CrawlSchedulesTable.cronExpression] = cron
-                    it[CrawlSchedulesTable.description] = request.description
-                    it[CrawlSchedulesTable.enabled] = true
-                }[CrawlSchedulesTable.id].value
-            } else {
-                val updated = CrawlSchedulesTable.update({ CrawlSchedulesTable.id eq identifier }) {
-                    it[CrawlSchedulesTable.cronExpression] = cron
-                    it[CrawlSchedulesTable.description] = request.description
-                }
-
-                if (updated == 0) {
+            val idValue =
+                if (identifier == null) {
                     CrawlSchedulesTable.insert {
                         it[CrawlSchedulesTable.cronExpression] = cron
                         it[CrawlSchedulesTable.description] = request.description
                         it[CrawlSchedulesTable.enabled] = true
                     }[CrawlSchedulesTable.id].value
                 } else {
-                    identifier
+                    val updated =
+                        CrawlSchedulesTable.update({ CrawlSchedulesTable.id eq identifier }) {
+                            it[CrawlSchedulesTable.cronExpression] = cron
+                            it[CrawlSchedulesTable.description] = request.description
+                        }
+
+                    if (updated == 0) {
+                        CrawlSchedulesTable.insert {
+                            it[CrawlSchedulesTable.cronExpression] = cron
+                            it[CrawlSchedulesTable.description] = request.description
+                            it[CrawlSchedulesTable.enabled] = true
+                        }[CrawlSchedulesTable.id].value
+                    } else {
+                        identifier
+                    }
                 }
-            }
 
             CrawlSchedulesTable
                 .selectAll()
@@ -72,10 +74,11 @@ class DatabaseCrawlScheduleService : CrawlScheduleService {
         require(fields.size in 5..6) { "Cron expression must contain 5 or 6 fields" }
     }
 
-    private fun ResultRow.toModel(): CrawlSchedule = CrawlSchedule(
-        id = this[CrawlSchedulesTable.id].value.toString(),
-        cron = this[CrawlSchedulesTable.cronExpression],
-        enabled = this[CrawlSchedulesTable.enabled],
-        description = this[CrawlSchedulesTable.description]
-    )
+    private fun ResultRow.toModel(): CrawlSchedule =
+        CrawlSchedule(
+            id = this[CrawlSchedulesTable.id].value.toString(),
+            cron = this[CrawlSchedulesTable.cronExpression],
+            enabled = this[CrawlSchedulesTable.enabled],
+            description = this[CrawlSchedulesTable.description],
+        )
 }

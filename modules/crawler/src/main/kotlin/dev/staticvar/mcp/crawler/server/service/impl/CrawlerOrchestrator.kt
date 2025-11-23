@@ -30,8 +30,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.readRemaining
-import java.io.Closeable
-import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,6 +41,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.Closeable
+import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -58,68 +58,70 @@ class CrawlerOrchestrator(
     private val chunkingConfig: ChunkingConfig,
     private val crawlerConfig: CrawlerConfig,
     private val httpClient: HttpClient,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) : CrawlExecutionService, CrawlStatusService, Closeable {
-
     private val state = MutableStateFlow<CrawlStatusSnapshot>(CrawlStatusSnapshot.Idle)
     private val jobGuard = Mutex()
     private var activeJobId: String? = null
 
-    override suspend fun trigger(requestedBy: String): CrawlTriggerResult = jobGuard.withLock {
-        if (!scope.coroutineContext.isActive) {
-            return@withLock CrawlTriggerResult(
-                accepted = false,
-                jobId = null,
-                message = "Crawler service is shutting down"
-            )
-        }
-
-        val existingId = activeJobId
-        if (existingId != null) {
-            return@withLock CrawlTriggerResult(
-                accepted = false,
-                jobId = existingId,
-                message = "Crawl job $existingId already running"
-            )
-        }
-
-        val jobId = createJobId()
-        activeJobId = jobId
-
-        scope.launch {
-            try {
-                executeCrawl(jobId, requestedBy)
-            } catch (unexpected: Exception) {
-                logger.error(unexpected) { "Crawl job $jobId failed" }
-                state.value = CrawlStatusSnapshot.Completed(
-                    lastJobId = jobId,
-                    completedAt = currentDateTime(),
-                    processedCount = 0,
-                    failureCount = 1,
-                    notes = unexpected.message ?: "unknown failure"
+    override suspend fun trigger(requestedBy: String): CrawlTriggerResult =
+        jobGuard.withLock {
+            if (!scope.coroutineContext.isActive) {
+                return@withLock CrawlTriggerResult(
+                    accepted = false,
+                    jobId = null,
+                    message = "Crawler service is shutting down",
                 )
-            } finally {
-                jobGuard.withLock {
-                    activeJobId = null
-                    if (state.value is CrawlStatusSnapshot.Running) {
-                        state.value = CrawlStatusSnapshot.Completed(
+            }
+
+            val existingId = activeJobId
+            if (existingId != null) {
+                return@withLock CrawlTriggerResult(
+                    accepted = false,
+                    jobId = existingId,
+                    message = "Crawl job $existingId already running",
+                )
+            }
+
+            val jobId = createJobId()
+            activeJobId = jobId
+
+            scope.launch {
+                try {
+                    executeCrawl(jobId, requestedBy)
+                } catch (unexpected: Exception) {
+                    logger.error(unexpected) { "Crawl job $jobId failed" }
+                    state.value =
+                        CrawlStatusSnapshot.Completed(
                             lastJobId = jobId,
                             completedAt = currentDateTime(),
                             processedCount = 0,
-                            failureCount = 0,
-                            notes = "Job terminated"
+                            failureCount = 1,
+                            notes = unexpected.message ?: "unknown failure",
                         )
+                } finally {
+                    jobGuard.withLock {
+                        activeJobId = null
+                        if (state.value is CrawlStatusSnapshot.Running) {
+                            state.value =
+                                CrawlStatusSnapshot.Completed(
+                                    lastJobId = jobId,
+                                    completedAt = currentDateTime(),
+                                    processedCount = 0,
+                                    failureCount = 0,
+                                    notes = "Job terminated",
+                                )
+                        }
                     }
                 }
             }
-        }
 
-        return@withLock CrawlTriggerResult(
-            accepted = true,
-            jobId = jobId,
-            message = "Crawl triggered by $requestedBy"
-        )
-    }
+            return@withLock CrawlTriggerResult(
+                accepted = true,
+                jobId = jobId,
+                message = "Crawl triggered by $requestedBy",
+            )
+        }
 
     override suspend fun snapshot(): CrawlStatusSnapshot = state.value
 
@@ -127,15 +129,19 @@ class CrawlerOrchestrator(
         scope.cancel()
     }
 
-    private suspend fun executeCrawl(jobId: String, requestedBy: String) {
+    private suspend fun executeCrawl(
+        jobId: String,
+        requestedBy: String,
+    ) {
         val startedAt = currentDateTime()
-        state.value = CrawlStatusSnapshot.Running(
-            activeJobId = jobId,
-            processedCount = 0,
-            totalCount = null,
-            startedAt = startedAt,
-            message = "Preparing crawl requested by $requestedBy"
-        )
+        state.value =
+            CrawlStatusSnapshot.Running(
+                activeJobId = jobId,
+                processedCount = 0,
+                totalCount = null,
+                startedAt = startedAt,
+                message = "Preparing crawl requested by $requestedBy",
+            )
 
         val pending = sourceUrlRepository.findPending()
         val totalCount = pending.size
@@ -145,18 +151,19 @@ class CrawlerOrchestrator(
                 processedCount = 0,
                 totalCount = totalCount,
                 startedAt = startedAt,
-                message = if (totalCount == 0) "No pending URLs" else "Discovered $totalCount URL(s)"
+                message = if (totalCount == 0) "No pending URLs" else "Discovered $totalCount URL(s)",
             )
         }
 
         if (pending.isEmpty()) {
-            state.value = CrawlStatusSnapshot.Completed(
-                lastJobId = jobId,
-                completedAt = currentDateTime(),
-                processedCount = 0,
-                failureCount = 0,
-                notes = "No pending URLs"
-            )
+            state.value =
+                CrawlStatusSnapshot.Completed(
+                    lastJobId = jobId,
+                    completedAt = currentDateTime(),
+                    processedCount = 0,
+                    failureCount = 0,
+                    notes = "No pending URLs",
+                )
             return
         }
 
@@ -170,17 +177,18 @@ class CrawlerOrchestrator(
                     processedCount = processed,
                     totalCount = totalCount,
                     startedAt = startedAt,
-                    message = "Crawling ${source.url}"
+                    message = "Crawling ${source.url}",
                 )
             }
 
-            val outcome = runCatching { processSource(source) }
-                .onFailure { throwable ->
-                    failures += 1
-                    logger.error(throwable) { "Failed to crawl ${source.url}" }
-                    updateFailedStatus(source, throwable)
-                }
-                .getOrNull()
+            val outcome =
+                runCatching { processSource(source) }
+                    .onFailure { throwable ->
+                        failures += 1
+                        logger.error(throwable) { "Failed to crawl ${source.url}" }
+                        updateFailedStatus(source, throwable)
+                    }
+                    .getOrNull()
 
             if (outcome?.wasSuccessful == true) {
                 processed += 1
@@ -192,7 +200,7 @@ class CrawlerOrchestrator(
                     processedCount = processed,
                     totalCount = totalCount,
                     startedAt = startedAt,
-                    message = "Processed ${index + 1} of $totalCount"
+                    message = "Processed ${index + 1} of $totalCount",
                 )
             }
 
@@ -201,13 +209,14 @@ class CrawlerOrchestrator(
             }
         }
 
-        state.value = CrawlStatusSnapshot.Completed(
-            lastJobId = jobId,
-            completedAt = currentDateTime(),
-            processedCount = processed,
-            failureCount = failures,
-            notes = if (failures == 0) "Completed successfully" else "$failures source(s) failed"
-        )
+        state.value =
+            CrawlStatusSnapshot.Completed(
+                lastJobId = jobId,
+                completedAt = currentDateTime(),
+                processedCount = processed,
+                failureCount = failures,
+                notes = if (failures == 0) "Completed successfully" else "$failures source(s) failed",
+            )
     }
 
     private suspend fun processSource(source: SourceUrl): ProcessOutcome {
@@ -235,14 +244,15 @@ class CrawlerOrchestrator(
     }
 
     private suspend fun fetchSource(source: SourceUrl): FetchOutcome {
-        val response = httpClient.get(source.url) {
-            header(HttpHeaders.UserAgent, crawlerConfig.userAgent)
-            source.etag?.let { header(HttpHeaders.IfNoneMatch, it) }
-            source.lastModified?.let { header(HttpHeaders.IfModifiedSince, it) }
-            timeout {
-                requestTimeoutMillis = crawlerConfig.timeout
+        val response =
+            httpClient.get(source.url) {
+                header(HttpHeaders.UserAgent, crawlerConfig.userAgent)
+                source.etag?.let { header(HttpHeaders.IfNoneMatch, it) }
+                source.lastModified?.let { header(HttpHeaders.IfModifiedSince, it) }
+                timeout {
+                    requestTimeoutMillis = crawlerConfig.timeout
+                }
             }
-        }
 
         return when {
             response.status == HttpStatusCode.NotModified -> FetchOutcome.NotModified
@@ -254,7 +264,7 @@ class CrawlerOrchestrator(
                     content = bytes,
                     mediaType = response.headers[HttpHeaders.ContentType],
                     etag = response.headers[HttpHeaders.ETag],
-                    lastModified = response.headers[HttpHeaders.LastModified]
+                    lastModified = response.headers[HttpHeaders.LastModified],
                 )
             }
             response.status == HttpStatusCode.TooManyRequests -> {
@@ -270,38 +280,45 @@ class CrawlerOrchestrator(
         }
     }
 
-    private suspend fun ingestContent(source: SourceUrl, fetched: FetchOutcome.Fetched) {
-        val parser = parserRegistry.forType(source.parserType)
-            ?: parserRegistry.forUrl(source.url)
-            ?: error("No parser available for ${source.url}")
+    private suspend fun ingestContent(
+        source: SourceUrl,
+        fetched: FetchOutcome.Fetched,
+    ) {
+        val parser =
+            parserRegistry.forType(source.parserType)
+                ?: parserRegistry.forUrl(source.url)
+                ?: error("No parser available for ${source.url}")
 
-        val parseRequest = ParseRequest(
-            url = source.url,
-            rawBytes = fetched.content,
-            mediaType = fetched.mediaType,
-            fetchedAt = currentTimeInstant()
-        )
+        val parseRequest =
+            ParseRequest(
+                url = source.url,
+                rawBytes = fetched.content,
+                mediaType = fetched.mediaType,
+                fetchedAt = currentTimeInstant(),
+            )
 
         val parseResult = parser.parse(parseRequest, ParserContext(chunking = chunkingConfig))
 
         // Generate embeddings outside the transaction to avoid holding the lock too long
         val chunks = parseResult.chunks
-        val embeddedChunks = if (chunks.isNotEmpty()) {
-            val embeddings = embeddingService.embed(EmbeddingBatchRequest(chunks.map(DocumentChunk::content)))
-            embeddings.mapIndexed { index, embeddingResult ->
-                EmbeddedChunk(
-                    id = 0,
-                    documentId = 0, // Will be updated after document insertion
-                    chunkIndex = index,
-                    content = chunks[index].content,
-                    embedding = embeddingResult.embedding,
-                    metadata = chunks[index].metadata,
-                    tokenCount = embeddingResult.tokenCount
-                )
+        val embeddedChunks =
+            if (chunks.isNotEmpty()) {
+                val embeddings = embeddingService.embed(EmbeddingBatchRequest(chunks.map(DocumentChunk::content)))
+                embeddings.mapIndexed { index, embeddingResult ->
+                    EmbeddedChunk(
+                        id = 0,
+                        // Will be updated after document insertion
+                        documentId = 0,
+                        chunkIndex = index,
+                        content = chunks[index].content,
+                        embedding = embeddingResult.embedding,
+                        metadata = chunks[index].metadata,
+                        tokenCount = embeddingResult.tokenCount,
+                    )
+                }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
-        }
 
         documentRepository.deleteBySourceUrl(source.url)
         val documentId = documentRepository.insert(parseResult.document)
@@ -316,18 +333,25 @@ class CrawlerOrchestrator(
         sourceUrlRepository.updateStatus(source.id, CrawlStatus.SUCCESS, null)
     }
 
-    private suspend fun updateFailedStatus(source: SourceUrl, throwable: Throwable) {
+    private suspend fun updateFailedStatus(
+        source: SourceUrl,
+        throwable: Throwable,
+    ) {
         val baseMessage = throwable.message?.take(MAX_ERROR_LENGTH) ?: throwable::class.simpleName.orEmpty()
-        val attemptSuffix = if (crawlerConfig.retryAttempts > 1) {
-            " (after ${crawlerConfig.retryAttempts} attempts)"
-        } else {
-            ""
-        }
+        val attemptSuffix =
+            if (crawlerConfig.retryAttempts > 1) {
+                " (after ${crawlerConfig.retryAttempts} attempts)"
+            } else {
+                ""
+            }
         val combined = (baseMessage + attemptSuffix).take(MAX_ERROR_LENGTH)
         sourceUrlRepository.updateStatus(source.id, CrawlStatus.FAILED, combined)
     }
 
-    private suspend fun <T> runWithRetries(operationName: String, block: suspend () -> T): T {
+    private suspend fun <T> runWithRetries(
+        operationName: String,
+        block: suspend () -> T,
+    ): T {
         val maxAttempts = crawlerConfig.retryAttempts.coerceAtLeast(1)
         var attempt = 0
         var nextDelay = initialRetryDelay()
@@ -358,11 +382,12 @@ class CrawlerOrchestrator(
     }
 
     private fun initialRetryDelay(): Duration {
-        val configuredDelay = if (crawlerConfig.requestDelayMs > 0) {
-            crawlerConfig.requestDelayMs.milliseconds
-        } else {
-            Duration.ZERO
-        }
+        val configuredDelay =
+            if (crawlerConfig.requestDelayMs > 0) {
+                crawlerConfig.requestDelayMs.milliseconds
+            } else {
+                Duration.ZERO
+            }
         return configuredDelay.coerceAtLeast(MIN_RETRY_DELAY)
     }
 
@@ -378,11 +403,12 @@ class CrawlerOrchestrator(
 
     private sealed interface FetchOutcome {
         data object NotModified : FetchOutcome
+
         data class Fetched(
             val content: ByteArray,
             val mediaType: String?,
             val etag: String?,
-            val lastModified: String?
+            val lastModified: String?,
         ) : FetchOutcome
     }
 

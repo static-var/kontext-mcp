@@ -8,7 +8,6 @@ import dev.staticvar.mcp.indexer.repository.SourceUrlRepository
 import dev.staticvar.mcp.shared.model.CrawlStatus
 import dev.staticvar.mcp.shared.model.ParserType
 import dev.staticvar.mcp.shared.model.SourceUrl
-import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -17,70 +16,83 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
+import kotlin.time.Clock
 
 class SourceUrlRepositoryImpl : SourceUrlRepository {
+    override suspend fun insert(
+        url: String,
+        parserType: ParserType,
+    ): SourceUrl =
+        dbQuery {
+            val id = SourceUrlsTable.insertReturningId(url, parserType)
+            SourceUrlsTable
+                .selectAll()
+                .where { SourceUrlsTable.id eq id }
+                .single()
+                .toSourceUrl()
+        }
 
-    override suspend fun insert(url: String, parserType: ParserType): SourceUrl = dbQuery {
-        val id = SourceUrlsTable.insertReturningId(url, parserType)
-        SourceUrlsTable
-            .selectAll()
-            .where { SourceUrlsTable.id eq id }
-            .single()
-            .toSourceUrl()
-    }
+    override suspend fun findById(id: Int): SourceUrl? =
+        dbQuery {
+            SourceUrlsTable
+                .selectAll()
+                .where { SourceUrlsTable.id eq id }
+                .singleOrNull()
+                ?.toSourceUrl()
+        }
 
-    override suspend fun findById(id: Int): SourceUrl? = dbQuery {
-        SourceUrlsTable
-            .selectAll()
-            .where { SourceUrlsTable.id eq id }
-            .singleOrNull()
-            ?.toSourceUrl()
-    }
+    override suspend fun findByUrl(url: String): SourceUrl? =
+        dbQuery {
+            SourceUrlsTable
+                .selectAll()
+                .where { SourceUrlsTable.url eq url }
+                .singleOrNull()
+                ?.toSourceUrl()
+        }
 
-    override suspend fun findByUrl(url: String): SourceUrl? = dbQuery {
-        SourceUrlsTable
-            .selectAll()
-            .where { SourceUrlsTable.url eq url }
-            .singleOrNull()
-            ?.toSourceUrl()
-    }
+    override suspend fun findAll(): List<SourceUrl> =
+        dbQuery {
+            SourceUrlsTable
+                .selectAll()
+                .orderBy(
+                    SourceUrlsTable.id to SortOrder.ASC,
+                )
+                .map { it.toSourceUrl() }
+        }
 
-    override suspend fun findAll(): List<SourceUrl> = dbQuery {
-        SourceUrlsTable
-            .selectAll()
-            .orderBy(
-                SourceUrlsTable.id to SortOrder.ASC
-            )
-            .map { it.toSourceUrl() }
-    }
+    override suspend fun findEnabled(): List<SourceUrl> =
+        dbQuery {
+            SourceUrlsTable
+                .selectAll()
+                .where { SourceUrlsTable.enabled eq true }
+                .orderBy(
+                    SourceUrlsTable.lastCrawled to SortOrder.ASC,
+                    SourceUrlsTable.id to SortOrder.ASC,
+                )
+                .map { it.toSourceUrl() }
+        }
 
-    override suspend fun findEnabled(): List<SourceUrl> = dbQuery {
-        SourceUrlsTable
-            .selectAll()
-            .where { SourceUrlsTable.enabled eq true }
-            .orderBy(
-                SourceUrlsTable.lastCrawled to SortOrder.ASC,
-                SourceUrlsTable.id to SortOrder.ASC
-            )
-            .map { it.toSourceUrl() }
-    }
+    override suspend fun findPending(limit: Int): List<SourceUrl> =
+        dbQuery {
+            SourceUrlsTable
+                .selectAll()
+                .where {
+                    (SourceUrlsTable.status eq CrawlStatus.PENDING) and
+                        (SourceUrlsTable.enabled eq true)
+                }
+                .orderBy(
+                    SourceUrlsTable.lastCrawled to SortOrder.ASC,
+                    SourceUrlsTable.id to SortOrder.ASC,
+                )
+                .limit(limit)
+                .map { it.toSourceUrl() }
+        }
 
-    override suspend fun findPending(limit: Int): List<SourceUrl> = dbQuery {
-        SourceUrlsTable
-            .selectAll()
-            .where {
-                (SourceUrlsTable.status eq CrawlStatus.PENDING) and
-                    (SourceUrlsTable.enabled eq true)
-            }
-            .orderBy(
-                SourceUrlsTable.lastCrawled to SortOrder.ASC,
-                SourceUrlsTable.id to SortOrder.ASC
-            )
-            .limit(limit)
-            .map { it.toSourceUrl() }
-    }
-
-    override suspend fun updateStatus(id: Int, status: CrawlStatus, errorMessage: String?) {
+    override suspend fun updateStatus(
+        id: Int,
+        status: CrawlStatus,
+        errorMessage: String?,
+    ) {
         dbQuery {
             SourceUrlsTable.update({ SourceUrlsTable.id eq id }) {
                 it[SourceUrlsTable.status] = status
@@ -89,7 +101,11 @@ class SourceUrlRepositoryImpl : SourceUrlRepository {
         }
     }
 
-    override suspend fun updateCrawlMetadata(id: Int, etag: String?, lastModified: String?) {
+    override suspend fun updateCrawlMetadata(
+        id: Int,
+        etag: String?,
+        lastModified: String?,
+    ) {
         dbQuery {
             SourceUrlsTable.update({ SourceUrlsTable.id eq id }) {
                 it[SourceUrlsTable.etag] = etag
@@ -107,9 +123,10 @@ class SourceUrlRepositoryImpl : SourceUrlRepository {
         }
     }
 
-    override suspend fun delete(id: Int): Boolean = dbQuery {
-        SourceUrlsTable.deleteWhere { SourceUrlsTable.id eq id } > 0
-    }
+    override suspend fun delete(id: Int): Boolean =
+        dbQuery {
+            SourceUrlsTable.deleteWhere { SourceUrlsTable.id eq id } > 0
+        }
 
     private fun ResultRow.toSourceUrl(): SourceUrl =
         SourceUrl(
@@ -121,19 +138,20 @@ class SourceUrlRepositoryImpl : SourceUrlRepository {
             etag = this[SourceUrlsTable.etag],
             lastModified = this[SourceUrlsTable.lastModified],
             status = this[SourceUrlsTable.status],
-            errorMessage = this[SourceUrlsTable.errorMessage]
+            errorMessage = this[SourceUrlsTable.errorMessage],
         )
 
     private fun SourceUrlsTable.insertReturningId(
         url: String,
-        parserType: ParserType
+        parserType: ParserType,
     ): Int {
-        val insertStatement = insert {
-            it[SourceUrlsTable.url] = url
-            it[SourceUrlsTable.parserType] = parserType
-            it[SourceUrlsTable.enabled] = true
-            it[SourceUrlsTable.status] = CrawlStatus.PENDING
-        }
+        val insertStatement =
+            insert {
+                it[SourceUrlsTable.url] = url
+                it[SourceUrlsTable.parserType] = parserType
+                it[SourceUrlsTable.enabled] = true
+                it[SourceUrlsTable.status] = CrawlStatus.PENDING
+            }
         return insertStatement[SourceUrlsTable.id].value
     }
 }

@@ -10,7 +10,7 @@ data class AppConfig(
     val chunking: ChunkingConfig,
     val retrieval: RetrievalConfig,
     val reranking: RerankingConfig,
-    val crawler: CrawlerConfig
+    val crawler: CrawlerConfig,
 )
 
 data class RerankingConfig(
@@ -18,7 +18,7 @@ data class RerankingConfig(
     val modelPath: String = "BAAI/bge-reranker-base",
     val modelCacheDir: String = "./models",
     val modelFilename: String? = null,
-    val quantized: Boolean = false
+    val quantized: Boolean = false,
 )
 
 data class DatabaseConfig(
@@ -27,7 +27,7 @@ data class DatabaseConfig(
     val database: String,
     val username: String,
     val password: String,
-    val maxPoolSize: Int = 10
+    val maxPoolSize: Int = 10,
 ) {
     val jdbcUrl: String
         get() = "jdbc:postgresql://$host:$port/$database"
@@ -40,7 +40,7 @@ data class EmbeddingConfig(
     val quantized: Boolean = false,
     val dimension: Int = 1024,
     val batchSize: Int = 32,
-    val maxTokens: Int = 512
+    val maxTokens: Int = 512,
 )
 
 data class ChunkingConfig(
@@ -48,7 +48,7 @@ data class ChunkingConfig(
     val overlapTokens: Int = 50,
     val maxTokens: Int = 1024,
     val preserveCodeBlocks: Boolean = true,
-    val preserveSectionHierarchy: Boolean = true
+    val preserveSectionHierarchy: Boolean = true,
 )
 
 data class RetrievalConfig(
@@ -56,7 +56,7 @@ data class RetrievalConfig(
     val maxTokenBudget: Int = 8000,
     val defaultSimilarityThreshold: Float = 0.7f,
     val topKCandidates: Int = 30,
-    val enableReranking: Boolean = false
+    val enableReranking: Boolean = false,
 )
 
 data class CrawlerConfig(
@@ -64,5 +64,5 @@ data class CrawlerConfig(
     val requestDelayMs: Long = 1000,
     val userAgent: String = "AndroidKotlinMCP/0.1.0",
     val timeout: Long = 30000,
-    val retryAttempts: Int = 3
+    val retryAttempts: Int = 3,
 )

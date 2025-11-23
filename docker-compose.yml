@@ -26,7 +26,7 @@ services:
   mcp-server:
     build:
       context: .
-      dockerfile: docker/Dockerfile.mcp-server.prebuilt
+      dockerfile: docker/Dockerfile.mcp-server
     container_name: mcp-server
     environment:
       DB_HOST: postgres
@@ -64,7 +64,7 @@ services:
   crawler:
     build:
       context: .
-      dockerfile: docker/Dockerfile.crawler.prebuilt
+      dockerfile: docker/Dockerfile.crawler
     container_name: mcp-crawler
     env_file:
       - .env
@@ -103,6 +103,7 @@ services:
         condition: service_healthy
     networks:
       - mcp-network
+      - appsnet
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
@@ -120,3 +121,5 @@ volumes:
 networks:
   mcp-network:
     driver: bridge
+  appsnet:
+    external: true

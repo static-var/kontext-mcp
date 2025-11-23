@@ -6,9 +6,8 @@ import dev.staticvar.mcp.crawler.server.service.UpsertScheduleRequest
 
 class CoordinatedCrawlScheduleService(
     private val delegate: CrawlScheduleService,
-    private val coordinator: CrawlSchedulerCoordinator
+    private val coordinator: CrawlSchedulerCoordinator,
 ) : CrawlScheduleService {
-
     override suspend fun list(): List<CrawlSchedule> = delegate.list()
 
     override suspend fun upsert(request: UpsertScheduleRequest): CrawlSchedule {

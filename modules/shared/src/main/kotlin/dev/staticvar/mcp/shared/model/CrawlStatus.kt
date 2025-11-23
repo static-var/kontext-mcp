@@ -20,5 +20,5 @@ enum class CrawlStatus {
     FAILED,
 
     /** URL temporarily disabled */
-    DISABLED
+    DISABLED,
 }

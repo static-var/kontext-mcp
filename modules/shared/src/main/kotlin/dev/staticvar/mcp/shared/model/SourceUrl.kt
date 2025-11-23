@@ -3,6 +3,7 @@ package dev.staticvar.mcp.shared.model
 import kotlinx.datetime.serializers.InstantIso8601Serializer
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
+
 /**
  * Represents a source URL to be crawled and indexed.
  * Tracks crawl status, change detection metadata, and parser configuration.
@@ -18,5 +19,5 @@ data class SourceUrl(
     val etag: String?,
     val lastModified: String?,
     val status: CrawlStatus,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 )

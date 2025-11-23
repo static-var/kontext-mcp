@@ -11,7 +11,7 @@ data class ContentSection(
     val hierarchy: List<String>,
     val body: String,
     val metadata: Map<String, String> = emptyMap(),
-    val codeLanguage: String? = null
+    val codeLanguage: String? = null,
 )
 
 /**
@@ -19,9 +19,8 @@ data class ContentSection(
  */
 class StructuredChunker(
     private val config: ChunkingConfig,
-    private val tokenEstimator: TokenEstimator = TokenEstimator()
+    private val tokenEstimator: TokenEstimator = TokenEstimator(),
 ) {
-
     fun chunk(sections: List<ContentSection>): List<DocumentChunk> {
         if (sections.isEmpty()) return emptyList()
 
@@ -42,12 +41,13 @@ class StructuredChunker(
                 return
             }
 
-            chunks += DocumentChunk(
-                content = content,
-                sectionHierarchy = currentHierarchy,
-                codeLanguage = null,
-                metadata = mergedMetadata.toMap()
-            )
+            chunks +=
+                DocumentChunk(
+                    content = content,
+                    sectionHierarchy = currentHierarchy,
+                    codeLanguage = null,
+                    metadata = mergedMetadata.toMap(),
+                )
 
             overlapSeed = buildOverlapSeed(content)
             buffer.clear()
@@ -67,16 +67,18 @@ class StructuredChunker(
             val isCodeSection = section.codeLanguage != null || section.metadata["section_type"] == "code"
             if (isCodeSection) {
                 flush(force = true)
-                chunks += DocumentChunk(
-                    content = normalized,
-                    sectionHierarchy = section.hierarchy,
-                    codeLanguage = section.codeLanguage,
-                    metadata = if (section.metadata.isEmpty()) {
-                        mapOf("section_type" to "code")
-                    } else {
-                        section.metadata
-                    }
-                )
+                chunks +=
+                    DocumentChunk(
+                        content = normalized,
+                        sectionHierarchy = section.hierarchy,
+                        codeLanguage = section.codeLanguage,
+                        metadata =
+                            if (section.metadata.isEmpty()) {
+                                mapOf("section_type" to "code")
+                            } else {
+                                section.metadata
+                            },
+                    )
                 overlapSeed = ""
                 return@forEach
             }
