@@ -123,6 +123,15 @@ class SourceUrlRepositoryImpl : SourceUrlRepository {
         }
     }
 
+    override suspend fun resetAllToPending() {
+        dbQuery {
+            SourceUrlsTable.update({ SourceUrlsTable.enabled eq true }) {
+                it[SourceUrlsTable.status] = CrawlStatus.PENDING
+                it[SourceUrlsTable.errorMessage] = null
+            }
+        }
+    }
+
     override suspend fun delete(id: Int): Boolean =
         dbQuery {
             SourceUrlsTable.deleteWhere { SourceUrlsTable.id eq id } > 0
