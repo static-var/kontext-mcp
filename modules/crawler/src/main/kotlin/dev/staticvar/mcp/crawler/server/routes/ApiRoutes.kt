@@ -15,7 +15,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import kotlin.time.toEpochMilliseconds
+import kotlinx.serialization.json.Json
 
 fun Route.apiRoutes(services: CrawlerServices) {
     post("/crawl/start") {
@@ -31,6 +31,15 @@ fun Route.apiRoutes(services: CrawlerServices) {
     get("/crawl/status") {
         val status = services.status.snapshot()
         call.respond(HttpStatusCode.OK, status.toResponse())
+    }
+
+    post("/crawl/reset") {
+        services.sources.resetAll()
+        if (call.request.contentType().match(ContentType.Application.Json)) {
+            call.respond(HttpStatusCode.OK, mapOf("status" to "reset"))
+        } else {
+            call.respondRedirect("/dashboard")
+        }
     }
 
     get("/crawl/insights") {
@@ -177,6 +186,7 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/urls/bulk") {
+        println("DEBUG: Received POST /urls/bulk")
         if (!call.isJsonRequest()) {
             call.respond(
                 HttpStatusCode.UnsupportedMediaType,
@@ -185,7 +195,18 @@ fun Route.apiRoutes(services: CrawlerServices) {
             return@post
         }
 
-        val payload = call.receiveJsonOrNull<BulkUrlPayload>() ?: return@post
+        println("DEBUG: Reading text...")
+        val text = call.receiveText()
+        println("DEBUG: Received text: $text")
+
+        val payload =
+            try {
+                kotlinx.serialization.json.Json.decodeFromString<BulkUrlPayload>(text)
+            } catch (e: Exception) {
+                println("DEBUG: JSON parse error: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid JSON payload"))
+                return@post
+            }
         val entries = payload.entries.map { it.normalize() }.filter { it.url.isNotBlank() }
         if (entries.isEmpty()) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No URLs supplied"))
