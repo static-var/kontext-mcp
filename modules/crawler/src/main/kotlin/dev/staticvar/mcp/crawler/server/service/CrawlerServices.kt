@@ -74,6 +74,8 @@ interface SourceUrlService {
 
     suspend fun add(request: AddSourceUrlRequest): SourceUrlRecord
 
+    suspend fun resetAll()
+
     suspend fun remove(id: String): Boolean
 }
 
