@@ -9,6 +9,14 @@ interface EmbeddingTokenizer : AutoCloseable {
      */
     fun tokenize(text: String): TokenizedInput
 
+    /**
+     * Tokenizes a pair of texts (e.g. query and document) into model-ready ids and masks.
+     */
+    fun tokenizePair(
+        text1: String,
+        text2: String,
+    ): TokenizedInput
+
     override fun close() {
         // default no-op
     }
