@@ -33,6 +33,7 @@ RUN echo "Right before Gradle, static files in src:" && \
 RUN chmod +x gradlew
 RUN ./gradlew --no-daemon \
     --rerun-tasks \
+    --no-build-cache \
     -Dorg.gradle.jvmargs="${GRADLE_JVMARGS}" \
     -Dorg.gradle.workers.max="${GRADLE_WORKERS}" \
     -Dorg.gradle.parallel="${GRADLE_PARALLEL}" \
