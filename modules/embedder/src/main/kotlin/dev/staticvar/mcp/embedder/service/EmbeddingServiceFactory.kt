@@ -26,7 +26,17 @@ object EmbeddingServiceFactory {
             client.close()
         }
 
-        return BgeEmbeddingService(tokenizer, modelRunner, config)
+        val service = BgeEmbeddingService(tokenizer, modelRunner, config)
+
+        // Warm-up
+        try {
+            service.embed(dev.staticvar.mcp.embedder.service.model.EmbeddingBatchRequest(listOf("warm up")))
+        } catch (e: Exception) {
+            // Log warning but don't fail startup
+            io.github.oshai.kotlinlogging.KotlinLogging.logger {}.warn(e) { "Embedding service warm-up failed" }
+        }
+
+        return service
     }
 
     private fun defaultHttpClient(): HttpClient = HttpClient(CIO)
