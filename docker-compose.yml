@@ -35,12 +35,16 @@ services:
       DB_USER: ${DB_USER:-mcp_user}
       DB_PASSWORD: ${DB_PASSWORD:-mcp_password}
       # Use HF model id; binary weights cached under MODEL_CACHE_DIR
-      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-BAAI/bge-large-en-v1.5}
+      # Switched to Snowflake/snowflake-arctic-embed-l for better MTEB performance (Score ~56 vs 54)
+      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-Snowflake/snowflake-arctic-embed-l}
       EMBEDDING_QUANTIZED: ${EMBEDDING_QUANTIZED:-true}
+      # Switched to mixedbread-ai/mxbai-rerank-large-v1 for massive reranking improvement (Score ~75 vs 67)
+      RERANKING_MODEL_PATH: ${RERANKING_MODEL_PATH:-mixedbread-ai/mxbai-rerank-large-v1}
+      RERANKING_QUANTIZED: ${RERANKING_QUANTIZED:-true}
       MODEL_CACHE_DIR: /app/models
       APP_CONFIG_PATH: /app/config/application.conf
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS_MCP_SERVER:--Xms512m -Xmx3g}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS_MCP_SERVER:--Xms512m -Xmx2g -Dlogback.configurationFile=/app/config/logback.xml}
     volumes:
       - model_cache:/app/models
       - ./config:/app/config:ro
@@ -56,7 +60,7 @@ services:
       resources:
         limits:
           cpus: "2.0"
-          memory: 4g
+          memory: 5g
         reservations:
           cpus: "1.0"
           memory: 2g
@@ -75,7 +79,7 @@ services:
       DB_USER: ${DB_USER:-mcp_user}
       DB_PASSWORD: ${DB_PASSWORD:-mcp_password}
       # Use HF model id; binary weights cached under MODEL_CACHE_DIR
-      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-BAAI/bge-large-en-v1.5}
+      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-Snowflake/snowflake-arctic-embed-l}
       EMBEDDING_QUANTIZED: ${EMBEDDING_QUANTIZED:-true}
       MODEL_CACHE_DIR: /app/models
       APP_CONFIG_PATH: /app/config/application.conf
