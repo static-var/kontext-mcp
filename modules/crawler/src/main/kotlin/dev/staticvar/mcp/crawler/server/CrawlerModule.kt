@@ -79,12 +79,25 @@ fun Application.crawlerModule(
             // Manual route to avoid potential zero-copy issues with staticFiles in Docker
             route("/assets") {
                 get("/{path...}") {
-                    val path = call.parameters.getAll("path")?.joinToString("/") ?: return@get
-                    val file = File(staticDir, "assets/$path")
-                    if (file.exists() && file.isFile) {
-                        call.respondBytes(file.readBytes(), ContentType.defaultForFile(file))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound)
+                    val path = call.parameters.getAll("path")?.joinToString("/")
+                    if (path != null) {
+                        val file = File(staticDir, "assets/$path")
+                        if (file.exists() && file.isFile) {
+                            call.respondBytes(file.readBytes(), ContentType.defaultForFile(file))
+                        } else {
+                            call.respond(HttpStatusCode.NotFound)
+                        }
+                    }
+                }
+                head("/{path...}") {
+                    val path = call.parameters.getAll("path")?.joinToString("/")
+                    if (path != null) {
+                        val file = File(staticDir, "assets/$path")
+                        if (file.exists() && file.isFile) {
+                            call.respondBytes(file.readBytes(), ContentType.defaultForFile(file))
+                        } else {
+                            call.respond(HttpStatusCode.NotFound)
+                        }
                     }
                 }
             }
