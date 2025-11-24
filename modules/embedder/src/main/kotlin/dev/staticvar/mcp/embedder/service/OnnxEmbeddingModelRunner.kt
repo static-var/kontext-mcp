@@ -52,17 +52,16 @@ class OnnxEmbeddingModelRunner private constructor(
                 val tensor =
                     outputs.get(outputName)
                         .orElseThrow { IllegalStateException("Model output '$outputName' missing") }
-                tensor.use {
-                    if (it !is OnnxTensor) {
-                        throw IllegalStateException("Model output '$outputName' is not a tensor")
-                    }
-                    return extractEmbeddings(
-                        tensor = it,
-                        batchSize = batchSize,
-                        sequenceLength = sequenceLength,
-                        masks = attentionMasks,
-                    )
+
+                if (tensor !is OnnxTensor) {
+                    throw IllegalStateException("Model output '$outputName' is not a tensor")
                 }
+                return extractEmbeddings(
+                    tensor = tensor,
+                    batchSize = batchSize,
+                    sequenceLength = sequenceLength,
+                    masks = attentionMasks,
+                )
             }
         } finally {
             tensors.values.forEach { it.close() }
@@ -205,7 +204,8 @@ class OnnxEmbeddingModelRunner private constructor(
             val environment = OrtEnvironment.getEnvironment()
             SessionOptions().use { options ->
                 options.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_WARNING)
-                options.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceAtLeast(1))
+                // Cap at 2 threads to match container limits and avoid throttling overhead
+                options.setIntraOpNumThreads(minOf(Runtime.getRuntime().availableProcessors(), 2).coerceAtLeast(1))
                 options.setInterOpNumThreads(1)
                 options.setOptimizationLevel(SessionOptions.OptLevel.BASIC_OPT)
 
