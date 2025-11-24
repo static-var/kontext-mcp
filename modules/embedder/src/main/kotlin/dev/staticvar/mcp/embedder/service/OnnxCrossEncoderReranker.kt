@@ -47,8 +47,28 @@ class OnnxCrossEncoderReranker(
 
         val artifacts = downloader.ensureArtifacts(embeddingConfig)
 
-        session = env.createSession(artifacts.modelFile.toString(), OrtSession.SessionOptions())
+        val sessionOptions = OrtSession.SessionOptions()
+        // Limit threads to avoid over-subscription in container
+        // Ideally this should be configurable or derived from cgroup limits, but Java's availableProcessors
+        // can be misleading in containers depending on JVM version and flags.
+        // Let's be conservative and use 2 threads (matching our docker compose limit)
+        sessionOptions.setIntraOpNumThreads(2)
+        sessionOptions.setInterOpNumThreads(1)
+        sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
+
+        session = env.createSession(artifacts.modelFile.toString(), sessionOptions)
         tokenizer = HuggingFaceEmbeddingTokenizer.create(artifacts.tokenizerFile, maxTokens)
+
+        // Warm-up
+        logger.info { "Warming up Reranker..." }
+        try {
+            val dummyQuery = "warm up query"
+            val dummyDoc = "warm up document"
+            rerank(dummyQuery, listOf(dummyDoc))
+            logger.info { "Reranker warm-up complete" }
+        } catch (e: Exception) {
+            logger.warn(e) { "Reranker warm-up failed" }
+        }
 
         logger.info { "Reranker initialized successfully" }
     }
@@ -65,73 +85,65 @@ class OnnxCrossEncoderReranker(
 
             if (documents.isEmpty()) return@withContext emptyList()
 
+            // Batch processing
+            val batchSize = documents.size
+            val seqLength = maxTokens
+
+            // Flatten arrays for batch tensor
+            val inputIdsFlat = LongArray(batchSize * seqLength)
+            val attentionMaskFlat = LongArray(batchSize * seqLength)
+            val tokenTypeIdsFlat = LongArray(batchSize * seqLength)
+
+            documents.forEachIndexed { i, doc ->
+                val tokenized = tokenizer!!.tokenizePair(query, doc)
+                // Ensure we don't overflow if tokenized length differs (though it shouldn't with padToMaxLength)
+                val length = minOf(tokenized.inputIds.size, seqLength)
+
+                System.arraycopy(tokenized.inputIds, 0, inputIdsFlat, i * seqLength, length)
+                System.arraycopy(tokenized.attentionMask, 0, attentionMaskFlat, i * seqLength, length)
+
+                val typeIds = tokenized.tokenTypeIds ?: LongArray(length) { 0 }
+                System.arraycopy(typeIds, 0, tokenTypeIdsFlat, i * seqLength, length)
+            }
+
+            val shape = longArrayOf(batchSize.toLong(), seqLength.toLong())
+
+            val inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(inputIdsFlat), shape)
+            val maskTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(attentionMaskFlat), shape)
+
+            val inputs = mutableMapOf<String, OnnxTensor>()
+            val modelInputs = session!!.inputNames
+
+            // Match model input names (case-insensitive)
+            val inputIdsName = modelInputs.firstOrNull { it.equals("input_ids", ignoreCase = true) }
+            val attentionMaskName = modelInputs.firstOrNull { it.equals("attention_mask", ignoreCase = true) }
+            val tokenTypeIdsName = modelInputs.firstOrNull { it.equals("token_type_ids", ignoreCase = true) }
+
+            if (inputIdsName != null) inputs[inputIdsName] = inputTensor
+            if (attentionMaskName != null) inputs[attentionMaskName] = maskTensor
+
+            var typeTensor: OnnxTensor? = null
+            if (tokenTypeIdsName != null) {
+                typeTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenTypeIdsFlat), shape)
+                inputs[tokenTypeIdsName] = typeTensor
+            }
+
+            val results = session!!.run(inputs)
+            val logits = results[0].value as Array<FloatArray> // [batchSize, 1]
+
             val scores =
-                documents.mapIndexed { index, doc ->
-                    val score = computeScore(query, doc)
+                logits.mapIndexed { index, row ->
+                    val score = sigmoid(row[0])
                     index to score
                 }
 
+            results.close()
+            inputTensor.close()
+            maskTensor.close()
+            typeTensor?.close()
+
             scores.sortedByDescending { it.second }.map { it.first }
         }
-
-    private fun computeScore(
-        query: String,
-        document: String,
-    ): Float {
-        // Cross-encoder format: [CLS] query [SEP] document [SEP]
-        // HuggingFace tokenizer handles this if we pass pair, but our wrapper might not.
-        // Let's construct the input text manually for now or rely on the tokenizer if it supports pairs.
-        // Our HuggingFaceEmbeddingTokenizer wrapper currently takes a single string.
-        // We'll concatenate: query + " " + document (simplification) or rely on the underlying tokenizer's pair encoding if exposed.
-        // Since our wrapper is simple, let's just concat. BGE-reranker expects: "query" and "text"
-        // Ideally we should update the tokenizer wrapper to support pairs, but for now let's try simple concatenation
-        // which works reasonably well for many models if separated by space, though [SEP] is better.
-
-        // Better approach: Update tokenizer wrapper or just use the underlying logic if possible.
-        // For now, let's assume the tokenizer handles the [CLS] and [SEP] if we provide the text.
-        // But wait, cross-encoders need specific segment IDs (token_type_ids) usually.
-
-        // Let's look at how we can do this. The tokenizer wrapper `tokenize(text)` returns inputIds, attentionMask, tokenTypeIds.
-        // If we pass "query [SEP] document", the tokenizer might just treat it as one sentence.
-        // We really need `encode(query, document)`.
-
-        // HACK: For this implementation, we will construct the string with special tokens if we can find them,
-        // or just use a simple concatenation which is "okay" for a MVP but not optimal.
-        // BGE Reranker: <s> query </s> </s> document </s>
-
-        // Let's just concatenate for now to get it working, and mark for improvement.
-        val input = "$query $document"
-
-        val tokenized = tokenizer!!.tokenize(input)
-
-        val inputIds = tokenized.inputIds
-        val attentionMask = tokenized.attentionMask
-        val tokenTypeIds = tokenized.tokenTypeIds ?: LongArray(inputIds.size) { 0 }
-
-        val shape = longArrayOf(1, inputIds.size.toLong())
-
-        val inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(inputIds), shape)
-        val maskTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(attentionMask), shape)
-        val typeTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenTypeIds), shape)
-
-        val inputs =
-            mapOf(
-                "input_ids" to inputTensor,
-                "attention_mask" to maskTensor,
-                "token_type_ids" to typeTensor,
-            )
-
-        val results = session!!.run(inputs)
-        val logits = results[0].value as Array<FloatArray>
-        val score = logits[0][0] // Assuming single output logit
-
-        results.close()
-        inputTensor.close()
-        maskTensor.close()
-        typeTensor.close()
-
-        return sigmoid(score)
-    }
 
     private fun sigmoid(x: Float): Float {
         return (1.0 / (1.0 + Math.exp(-x.toDouble()))).toFloat()
