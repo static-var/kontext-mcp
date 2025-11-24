@@ -18,17 +18,28 @@ class DatabaseSourceUrlService(
             .map { it.toRecord() }
 
     override suspend fun add(request: AddSourceUrlRequest): SourceUrlRecord {
+        println("DEBUG: Adding URL: ${request.url}")
         val normalizedUrl = request.url.trim()
         require(normalizedUrl.isNotEmpty()) { "URL must not be blank" }
 
+        println("DEBUG: Checking if URL exists: $normalizedUrl")
         val existing = repository.findByUrl(normalizedUrl)
+        println("DEBUG: URL check result: ${existing != null}")
         if (existing != null) {
+            println("DEBUG: URL already exists: ${request.url}")
             return existing.toRecord()
         }
 
+        println("DEBUG: Detecting parser type for: $normalizedUrl")
         val parserType = request.parserType ?: detectParserType(normalizedUrl)
+        println("DEBUG: Detected parser type: $parserType for ${request.url}")
         val inserted = repository.insert(normalizedUrl, parserType)
+        println("DEBUG: Inserted URL: ${request.url}")
         return inserted.toRecord()
+    }
+
+    override suspend fun resetAll() {
+        repository.resetAllToPending()
     }
 
     override suspend fun remove(id: String): Boolean {
@@ -37,13 +48,14 @@ class DatabaseSourceUrlService(
     }
 
     private suspend fun detectParserType(url: String): ParserType {
+        println("DEBUG: Detecting parser for $url")
         val parser = runCatching { parserRegistry.forUrl(url) }.getOrNull()
         val resolved = parser?.supportedTypes?.firstOrNull()
         if (resolved != null) {
-            logger.debug { "Detected parser $resolved for $url" }
+            println("DEBUG: Detected parser $resolved for $url")
             return resolved
         }
-        logger.warn { "No parser matched $url; falling back to GENERIC_HTML" }
+        println("DEBUG: No parser matched $url; falling back to GENERIC_HTML")
         return ParserType.GENERIC_HTML
     }
 
