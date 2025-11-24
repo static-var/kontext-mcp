@@ -27,6 +27,24 @@ class HuggingFaceEmbeddingTokenizer private constructor(
         )
     }
 
+    override fun tokenizePair(
+        text1: String,
+        text2: String,
+    ): TokenizedInput {
+        val encoding = tokenizer.encode(text1, text2)
+        val ids = encoding.ids()
+        val attentionMask = encoding.attentionMask()
+        val typeIds = encoding.typeIds()
+
+        return TokenizedInput(
+            inputIds = ids,
+            attentionMask = attentionMask,
+            tokenTypeIds = if (typeIds.allZero()) null else typeIds,
+            tokenCount = attentionMask.count { it == 1L },
+            truncated = encoding.exceedMaxLength(),
+        )
+    }
+
     override fun close() {
         tokenizer.close()
     }
@@ -45,7 +63,6 @@ class HuggingFaceEmbeddingTokenizer private constructor(
                     .optTokenizerPath(tokenizerPath)
                     .optAddSpecialTokens(true)
                     .optPadding(true)
-                    .optPadToMaxLength()
                     .optTruncation(true)
                     .optMaxLength(maxTokens)
                     .build()
