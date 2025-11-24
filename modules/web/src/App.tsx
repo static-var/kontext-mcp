@@ -11,12 +11,17 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const response = await fetch('/api/session', {
+          signal: controller.signal,
           credentials: 'include',
           headers: {
             Accept: 'application/json'
           }
         });
+        clearTimeout(timeoutId);
         setIsAuthenticated(response.ok);
       } catch (e) {
         console.error("Auth check failed", e);
