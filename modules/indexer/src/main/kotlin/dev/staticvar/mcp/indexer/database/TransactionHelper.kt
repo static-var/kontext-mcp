@@ -10,5 +10,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
  */
 suspend fun <T> dbQuery(block: JdbcTransaction.() -> T): T =
     withContext(Dispatchers.IO) {
-        transaction { block() }
+        transaction {
+            block()
+        }
     }
