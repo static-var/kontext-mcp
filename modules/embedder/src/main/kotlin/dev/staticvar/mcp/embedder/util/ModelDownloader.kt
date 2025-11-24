@@ -3,7 +3,7 @@ package dev.staticvar.mcp.embedder.util
 import dev.staticvar.mcp.shared.config.EmbeddingConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
-import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.readAvailable
@@ -11,7 +11,6 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
-import kotlin.io.DEFAULT_BUFFER_SIZE
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.extension
@@ -144,25 +143,26 @@ class ModelDownloader(private val httpClient: HttpClient) {
         target: Path,
     ) {
         logger.info { "Downloading $url -> ${target.pathString}" }
-        val response = httpClient.get(url)
-        if (response.status != HttpStatusCode.OK) {
-            throw IOException("Failed to download $url (status=${response.status})")
-        }
+        httpClient.prepareGet(url).execute { response ->
+            if (response.status != HttpStatusCode.OK) {
+                throw IOException("Failed to download $url (status=${response.status})")
+            }
 
-        target.parent?.createDirectories()
-        val channel = response.bodyAsChannel()
-        Files.newOutputStream(
-            target,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING,
-            StandardOpenOption.WRITE,
-        ).use { output ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            while (true) {
-                val read = channel.readAvailable(buffer, 0, buffer.size)
-                if (read == -1) break
-                if (read == 0) continue
-                output.write(buffer, 0, read)
+            target.parent?.createDirectories()
+            val channel = response.bodyAsChannel()
+            Files.newOutputStream(
+                target,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE,
+            ).use { output ->
+                val buffer = ByteArray(8 * 1024) // 8KB buffer
+                while (true) {
+                    val read = channel.readAvailable(buffer, 0, buffer.size)
+                    if (read == -1) break
+                    if (read == 0) continue
+                    output.write(buffer, 0, read)
+                }
             }
         }
     }
