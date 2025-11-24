@@ -28,9 +28,13 @@ class SearchService(
         val tokenBudget = resolveTokenBudget(request.tokenBudget)
         val similarityThreshold = resolveSimilarityThreshold(request.similarityThreshold)
 
+        // Prepend instruction for retrieval models like mxbai-embed-large-v1
+        // This is harmless for models that don't strictly require it, but essential for those that do.
+        val queryText = "Represent this sentence for searching relevant passages: ${request.query}"
+
         val embeddingResult =
             embeddingService.embed(
-                EmbeddingBatchRequest(listOf(request.query)),
+                EmbeddingBatchRequest(listOf(queryText)),
             ).firstOrNull() ?: error("Embedding service returned no results for query.")
 
         if (embeddingResult.truncated) {
