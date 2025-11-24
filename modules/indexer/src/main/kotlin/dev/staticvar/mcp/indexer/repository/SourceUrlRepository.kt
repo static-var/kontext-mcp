@@ -34,5 +34,7 @@ interface SourceUrlRepository {
 
     suspend fun markCrawled(id: Int)
 
+    suspend fun resetAllToPending()
+
     suspend fun delete(id: Int): Boolean
 }
