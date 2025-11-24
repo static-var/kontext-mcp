@@ -84,6 +84,42 @@ export const CrawlerInsightsPage = () => {
         }
     };
 
+    const triggerCrawl = async () => {
+        setRefreshing(true);
+        try {
+            await fetch('/api/crawl/start', {
+                method: 'POST',
+                credentials: 'include',
+            });
+            // Wait a bit for the job to register
+            setTimeout(() => void fetchInsights(), 500);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    const triggerRecrawlAll = async () => {
+        if (!confirm('Are you sure you want to reset and re-crawl all URLs?')) return;
+        setRefreshing(true);
+        try {
+            await fetch('/api/crawl/reset', {
+                method: 'POST',
+                credentials: 'include',
+            });
+            await fetch('/api/crawl/start', {
+                method: 'POST',
+                credentials: 'include',
+            });
+            setTimeout(() => void fetchInsights(), 500);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     useEffect(() => {
         void fetchInsights();
         const interval = setInterval(() => void fetchInsights(), 6000);
@@ -134,6 +170,26 @@ export const CrawlerInsightsPage = () => {
                                 </div>
                             ))}
                     </dl>
+                    
+                    <div className="flex flex-wrap gap-2 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => void triggerCrawl()}
+                            disabled={refreshing || data?.status.state === 'running'}
+                            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+                        >
+                            Crawl pending
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void triggerRecrawlAll()}
+                            disabled={refreshing || data?.status.state === 'running'}
+                            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                        >
+                            Re-crawl all
+                        </button>
+                    </div>
+
                     <button
                         type="button"
                         onClick={() => void fetchInsights()}
