@@ -13,6 +13,8 @@ interface EmbeddingRepository {
     ): List<ScoredChunk>
 
     suspend fun deleteByDocumentId(documentId: Int)
+
+    suspend fun count(): Long
 }
 
 data class ScoredChunk(

@@ -1,5 +1,6 @@
 dependencies {
     implementation(project(":modules:shared"))
+    implementation(project(":modules:embedder"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)

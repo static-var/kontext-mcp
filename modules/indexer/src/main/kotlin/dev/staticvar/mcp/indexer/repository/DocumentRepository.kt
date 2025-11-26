@@ -10,4 +10,6 @@ interface DocumentRepository {
     suspend fun findBySourceUrl(sourceUrl: String): List<Document>
 
     suspend fun deleteBySourceUrl(sourceUrl: String)
+
+    suspend fun count(): Long
 }

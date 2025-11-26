@@ -4,19 +4,35 @@ import dev.staticvar.mcp.crawler.server.auth.currentSession
 import dev.staticvar.mcp.crawler.server.service.AddSourceUrlRequest
 import dev.staticvar.mcp.crawler.server.service.CrawlSchedule
 import dev.staticvar.mcp.crawler.server.service.CrawlStatusSnapshot
+import dev.staticvar.mcp.crawler.server.service.CrawlTriggerResult
 import dev.staticvar.mcp.crawler.server.service.CrawlerServices
 import dev.staticvar.mcp.crawler.server.service.SourceUrlRecord
 import dev.staticvar.mcp.crawler.server.service.UpsertScheduleRequest
 import dev.staticvar.mcp.shared.model.CrawlStatus
 import dev.staticvar.mcp.shared.model.ParserType
+import dev.staticvar.mcp.shared.model.SearchRequest
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/**
+ * IMPORTANT: Do NOT use `withContext(Dispatchers.IO)` in route handlers for database calls.
+ *
+ * Ktor/Netty has a coroutine continuation issue where `withContext` doesn't resume properly
+ * after switching back from the IO dispatcher to the Netty event loop. This causes requests
+ * to hang indefinitely.
+ *
+ * Instead, use `runBlocking(Dispatchers.IO) { ... }` for all database operations in route handlers.
+ * This ensures blocking operations complete properly before returning to the Netty event loop.
+ *
+ * See: https://kontext.staticvar.dev for testing changes.
+ */
 fun Route.apiRoutes(services: CrawlerServices) {
     post("/crawl/start") {
         val session = call.currentSession()
@@ -34,7 +50,9 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/crawl/reset") {
-        services.sources.resetAll()
+        runBlocking(Dispatchers.IO) {
+            services.sources.resetAll()
+        }
         if (call.request.contentType().match(ContentType.Application.Json)) {
             call.respond(HttpStatusCode.OK, mapOf("status" to "reset"))
         } else {
@@ -44,18 +62,25 @@ fun Route.apiRoutes(services: CrawlerServices) {
 
     get("/crawl/insights") {
         val snapshot = services.status.snapshot().toResponse()
-        val urls = services.sources.list()
 
-        val insights =
-            urls
-                .sortedWith(
-                    compareByDescending<SourceUrlRecord> { it.status == CrawlStatus.IN_PROGRESS }
-                        .thenByDescending { it.lastCrawled?.toEpochMilliseconds() ?: Long.MIN_VALUE },
-                )
-                .take(50)
-                .map { it.toInsightPayload() }
+        // Use runBlocking to avoid continuation issues with Netty event loop
+        val (insights, summary) =
+            runBlocking(Dispatchers.IO) {
+                val urlList = services.sources.list()
 
-        val summary = urls.toQueueSummary()
+                val insightList =
+                    urlList
+                        .sortedWith(
+                            compareByDescending<SourceUrlRecord> { it.status == CrawlStatus.IN_PROGRESS }
+                                .thenByDescending { it.lastCrawled?.toEpochMilliseconds() ?: Long.MIN_VALUE },
+                        )
+                        .take(50)
+                        .map { it.toInsightPayload() }
+
+                val summaryData = urlList.toQueueSummary()
+
+                Pair(insightList, summaryData)
+            }
 
         call.respond(
             HttpStatusCode.OK,
@@ -98,13 +123,15 @@ fun Route.apiRoutes(services: CrawlerServices) {
         }
 
         val schedule =
-            services.scheduler.upsert(
-                UpsertScheduleRequest(
-                    id = payload.id,
-                    cron = payload.cron,
-                    description = payload.description,
-                ),
-            )
+            runBlocking(Dispatchers.IO) {
+                services.scheduler.upsert(
+                    UpsertScheduleRequest(
+                        id = payload.id,
+                        cron = payload.cron,
+                        description = payload.description,
+                    ),
+                )
+            }
 
         if (call.request.contentType().match(ContentType.Application.Json)) {
             call.respond(HttpStatusCode.OK, schedule.toPayload())
@@ -114,13 +141,19 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     get("/crawl/schedule") {
-        val schedules = services.scheduler.list().map { it.toPayload() }
+        val schedules =
+            runBlocking(Dispatchers.IO) {
+                services.scheduler.list().map { it.toPayload() }
+            }
         call.respond(HttpStatusCode.OK, schedules)
     }
 
     delete("/crawl/schedule/{id}") {
         val id = call.parameters["id"].orEmpty()
-        val deleted = services.scheduler.delete(id)
+        val deleted =
+            runBlocking(Dispatchers.IO) {
+                services.scheduler.delete(id)
+            }
         if (!deleted) {
             call.respond(HttpStatusCode.NotFound, mapOf("error" to "Schedule not found"))
         } else {
@@ -129,7 +162,10 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     get("/urls") {
-        val urls = services.sources.list().map { it.toPayload() }
+        val urls =
+            runBlocking(Dispatchers.IO) {
+                services.sources.list().map { it.toPayload() }
+            }
         call.respond(HttpStatusCode.OK, urls)
     }
 
@@ -174,9 +210,11 @@ fun Route.apiRoutes(services: CrawlerServices) {
             }
 
         val record =
-            services.sources.add(
-                AddSourceUrlRequest(url = payload.url, parserType = parserType),
-            )
+            runBlocking(Dispatchers.IO) {
+                services.sources.add(
+                    AddSourceUrlRequest(url = payload.url, parserType = parserType),
+                )
+            }
 
         if (call.request.contentType().match(ContentType.Application.Json)) {
             call.respond(HttpStatusCode.Created, record.toPayload())
@@ -186,7 +224,6 @@ fun Route.apiRoutes(services: CrawlerServices) {
     }
 
     post("/urls/bulk") {
-        println("DEBUG: Received POST /urls/bulk")
         if (!call.isJsonRequest()) {
             call.respond(
                 HttpStatusCode.UnsupportedMediaType,
@@ -195,15 +232,12 @@ fun Route.apiRoutes(services: CrawlerServices) {
             return@post
         }
 
-        println("DEBUG: Reading text...")
         val text = call.receiveText()
-        println("DEBUG: Received text: $text")
 
         val payload =
             try {
                 kotlinx.serialization.json.Json.decodeFromString<BulkUrlPayload>(text)
             } catch (e: Exception) {
-                println("DEBUG: JSON parse error: ${e.message}")
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid JSON payload"))
                 return@post
             }
@@ -232,12 +266,14 @@ fun Route.apiRoutes(services: CrawlerServices) {
 
             try {
                 val record =
-                    services.sources.add(
-                        AddSourceUrlRequest(
-                            url = entry.url,
-                            parserType = parserType,
-                        ),
-                    )
+                    runBlocking(Dispatchers.IO) {
+                        services.sources.add(
+                            AddSourceUrlRequest(
+                                url = entry.url,
+                                parserType = parserType,
+                            ),
+                        )
+                    }
                 successes += record.toPayload()
             } catch (ex: Exception) {
                 failures += BulkUrlFailure(entry.url, ex.message ?: "Failed to enqueue")
@@ -249,7 +285,10 @@ fun Route.apiRoutes(services: CrawlerServices) {
 
     delete("/urls/{id}") {
         val id = call.parameters["id"].orEmpty()
-        val removed = services.sources.remove(id)
+        val removed =
+            runBlocking(Dispatchers.IO) {
+                services.sources.remove(id)
+            }
         if (!removed) {
             call.respond(HttpStatusCode.NotFound, mapOf("error" to "Source URL not found"))
         } else {
@@ -260,6 +299,36 @@ fun Route.apiRoutes(services: CrawlerServices) {
     get("/meta/parsers") {
         val parsers = ParserType.entries.map { it.name }
         call.respond(HttpStatusCode.OK, parsers)
+    }
+
+    get("/stats") {
+        val stats =
+            runBlocking(Dispatchers.IO) {
+                services.stats.getStats()
+            }
+        call.respond(HttpStatusCode.OK, stats)
+    }
+
+    post("/search") {
+        if (!call.isJsonRequest()) {
+            call.respond(
+                HttpStatusCode.UnsupportedMediaType,
+                mapOf("error" to "Expected application/json"),
+            )
+            return@post
+        }
+
+        val request = call.receiveJsonOrNull<SearchRequest>()
+        if (request == null) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid search request"))
+            return@post
+        }
+
+        val response =
+            runBlocking(Dispatchers.IO) {
+                services.search.search(request)
+            }
+        call.respond(HttpStatusCode.OK, response)
     }
 }
 
@@ -398,7 +467,7 @@ private fun SourceUrlRecord.toPayload(): UrlPayload =
         errorMessage = errorMessage,
     )
 
-private fun dev.staticvar.mcp.crawler.server.service.CrawlTriggerResult.toResponse(): CrawlTriggerResponse =
+private fun CrawlTriggerResult.toResponse(): CrawlTriggerResponse =
     CrawlTriggerResponse(
         accepted = accepted,
         jobId = jobId,

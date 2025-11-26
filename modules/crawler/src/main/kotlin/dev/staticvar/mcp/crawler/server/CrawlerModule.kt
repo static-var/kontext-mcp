@@ -68,6 +68,7 @@ fun Application.crawlerModule(
             cookie.httpOnly = true
             cookie.secure = sessionConfig.enforceSecureCookie
             cookie.maxAge = sessionConfig.maxAgeSeconds.seconds
+            cookie.extensions["SameSite"] = "Lax"
             serializer = UsernameSessionSerializer
             transform(SessionTransportTransformerMessageAuthentication(sessionConfig.secret.encodeToByteArray()))
         }

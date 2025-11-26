@@ -47,6 +47,11 @@ class DocumentRepositoryImpl : DocumentRepository {
         }
     }
 
+    override suspend fun count(): Long =
+        dbQuery {
+            DocumentsTable.selectAll().count()
+        }
+
     private fun ResultRow.toDocument(): Document =
         Document(
             id = this[DocumentsTable.id].value,

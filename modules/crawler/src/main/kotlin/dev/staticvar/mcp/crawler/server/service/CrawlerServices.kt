@@ -2,6 +2,8 @@ package dev.staticvar.mcp.crawler.server.service
 
 import dev.staticvar.mcp.shared.model.CrawlStatus
 import dev.staticvar.mcp.shared.model.ParserType
+import dev.staticvar.mcp.shared.model.SearchRequest
+import dev.staticvar.mcp.shared.model.SearchResponse
 import kotlin.time.Instant
 
 /**
@@ -12,7 +14,13 @@ data class CrawlerServices(
     val scheduler: CrawlScheduleService,
     val executor: CrawlExecutionService,
     val sources: SourceUrlService,
+    val stats: SystemStatsService,
+    val search: SearchService,
 )
+
+interface SearchService {
+    suspend fun search(request: SearchRequest): SearchResponse
+}
 
 interface CrawlStatusService {
     suspend fun snapshot(): CrawlStatusSnapshot

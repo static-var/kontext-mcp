@@ -6,6 +6,7 @@ import dev.staticvar.mcp.crawler.server.service.SourceUrlService
 import dev.staticvar.mcp.indexer.repository.SourceUrlRepository
 import dev.staticvar.mcp.parser.registry.ParserRegistry
 import dev.staticvar.mcp.shared.model.ParserType
+import dev.staticvar.mcp.shared.model.SourceUrl
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 class DatabaseSourceUrlService(
@@ -59,7 +60,7 @@ class DatabaseSourceUrlService(
         return ParserType.GENERIC_HTML
     }
 
-    private fun dev.staticvar.mcp.shared.model.SourceUrl.toRecord(): SourceUrlRecord =
+    private fun SourceUrl.toRecord(): SourceUrlRecord =
         SourceUrlRecord(
             id = id,
             url = url,
