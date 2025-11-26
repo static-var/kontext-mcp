@@ -7,24 +7,24 @@ kotlin = "2.2.21"  # Latest stable (Nov 2025)
 kotlinx-coroutines = "1.10.2"  # Latest stable
 kotlinx-serialization = "1.9.0"  # Latest stable
 kotlinx-datetime = "0.7.1"  # Latest stable (July 2025)
-kotlinx-io = "0.8.0"  # Matches MCP SDK requirement
+kotlinx-io = "0.8.2"  # Latest stable (Nov 2025)
 
 # Ktor (Server & Client)
-ktor = "3.2.3"  # Align with MCP Kotlin SDK BOM
+ktor = "3.3.2"  # Align with MCP Kotlin SDK BOM
 
 # Database
 postgresql = "42.7.8"  # Latest stable (Sept 2025)
 pgvector = "0.1.6"  # Latest stable
 hikaricp = "7.0.2"  # Latest stable
-exposed = "1.0.0-rc-2"  # Latest RC with v1 API
-flyway = "11.15.0"  # Latest stable (Oct 2025)
+exposed = "1.0.0-rc-3"  # Latest RC with v1 API
+flyway = "11.17.2"  # Latest stable (Oct 2025)
 
 # MCP
-mcp-kotlin-sdk = "0.7.5"  # Kotlin MCP SDK latest stable (Nov 2025)
+mcp-kotlin-sdk = "0.8.0"  # Kotlin MCP SDK latest stable (Nov 2025)
 
 # Embedding & ML
-onnx-runtime = "1.21.1"  # Latest stable
-djl-tokenizers = "0.31.0"  # Verify latest from Maven Central
+onnx-runtime = "1.23.2"  # Latest stable
+djl-tokenizers = "0.35.0"  # Verify latest from Maven Central
 jtokkit = "1.1.0"  # Verify latest from Maven Central
 
 # Parsing
@@ -33,19 +33,19 @@ markdown = "0.7.3"  # Verify latest from Maven Central
 
 # CLI & Scheduling
 clikt = "5.0.3"  # Latest stable
-krontab = "2.5.1"  # Verify latest from Maven Central
+krontab = "2.7.2"  # Verify latest from Maven Central
 typesafe-config = "1.4.3"  # Stable (no updates)
 bcrypt = "0.10.2"  # at.favre bcrypt implementation
-auth0-jwt = "4.4.0"  # Java JWT for bearer tokens
+auth0-jwt = "4.5.0"  # Java JWT for bearer tokens
 
 # Logging
 kotlin-logging = "7.0.13"  # Align with MCP SDK runtime dependency
-logback = "1.5.20"  # Latest stable (1.5.x series)
+logback = "1.5.21"  # Latest stable (1.5.x series)
 
 # Testing
-junit = "5.11.4"  # Verify latest from Maven Central
+junit = "6.0.1"  # Verify latest from Maven Central
 mockk = "1.14.6"  # Latest stable (Oct 2025)
-testcontainers = "1.20.4"  # Verify latest from Maven Central
+testcontainers = "1.20.4"
 
 # Tooling
 ktlint-gradle = "12.1.1"  # Gradle ktlint plugin
