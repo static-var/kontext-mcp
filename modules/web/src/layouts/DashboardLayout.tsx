@@ -1,8 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, Search, Settings, LogOut, Database, ListPlus, Activity } from 'lucide-react';
+import { LayoutDashboard, Search, Settings, LogOut, Database, ListPlus, Activity, BookOpen } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export type DashboardSection = 'search' | 'overview' | 'settings' | 'queue' | 'activity';
+export type DashboardSection = 'search' | 'overview' | 'settings' | 'queue' | 'activity' | 'docs';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -60,6 +60,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         label="Crawler state"
                         active={activeSection === 'activity'}
                         onClick={() => onSectionChange('activity')}
+                    />
+                    <NavItem
+                        icon={<BookOpen className="h-5 w-5" />}
+                        label="Documentation"
+                        active={activeSection === 'docs'}
+                        onClick={() => onSectionChange('docs')}
                     />
                 </nav>
 
