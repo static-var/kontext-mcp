@@ -242,9 +242,15 @@ class SearchEvaluationIntegrationTest {
             }
 
         private fun encode(text: String): FloatArray {
+            val normalizedText =
+                if (text.startsWith("Represent this sentence for searching relevant passages:")) {
+                    text.substringAfter("Represent this sentence for searching relevant passages:").trim()
+                } else {
+                    text
+                }
             val vector = FloatArray(dimension)
             val tokens =
-                text.lowercase()
+                normalizedText.lowercase()
                     .split(Regex("\\W+"))
                     .filter { it.isNotBlank() }
 

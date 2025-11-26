@@ -4,16 +4,16 @@ import dev.staticvar.mcp.server.search.SearchService
 import dev.staticvar.mcp.shared.model.SearchRequest
 import dev.staticvar.mcp.shared.model.SearchResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.CallToolResult
-import io.modelcontextprotocol.kotlin.sdk.Implementation
-import io.modelcontextprotocol.kotlin.sdk.ServerCapabilities
-import io.modelcontextprotocol.kotlin.sdk.TextContent
-import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import io.modelcontextprotocol.kotlin.sdk.shared.McpJson
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.Implementation
+import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.currentCoroutineContext
@@ -143,11 +143,17 @@ private suspend fun handleSearchDocs(
     request: CallToolRequest,
     searchService: SearchService,
 ): CallToolResult {
+    val arguments =
+        request.arguments ?: run {
+            logger.warn { "Missing arguments for search_docs tool" }
+            return errorResult("Missing required arguments for search_docs tool")
+        }
+
     val searchRequest =
         try {
-            McpJson.decodeFromJsonElement(SearchRequest.serializer(), request.arguments)
+            McpJson.decodeFromJsonElement(SearchRequest.serializer(), arguments)
         } catch (exception: SerializationException) {
-            logger.warn(exception) { "Invalid search_docs arguments: ${request.arguments}" }
+            logger.warn(exception) { "Invalid search_docs arguments: $arguments" }
             return errorResult("Invalid arguments for search_docs tool: ${exception.localizedMessage ?: "bad input"}")
         }
 
@@ -250,7 +256,7 @@ private fun printUsage() {
 }
 
 private val SEARCH_INPUT_SCHEMA =
-    Tool.Input(
+    ToolSchema(
         properties =
             buildJsonObject {
                 put(

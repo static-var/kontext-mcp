@@ -11,10 +11,12 @@ import dev.staticvar.mcp.shared.config.RerankingConfig
 import dev.staticvar.mcp.shared.config.RetrievalConfig
 import dev.staticvar.mcp.shared.model.EmbeddedChunk
 import dev.staticvar.mcp.shared.model.SearchResponse
-import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
-import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.server.RegisteredTool
 import io.modelcontextprotocol.kotlin.sdk.shared.McpJson
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequestParams
+import io.modelcontextprotocol.kotlin.sdk.types.RequestMeta
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -45,8 +47,11 @@ class McpServerIntegrationTest {
             val result =
                 tool.handler.invoke(
                     CallToolRequest(
-                        name = "search_docs",
-                        arguments = buildJsonObject { put("query", JsonPrimitive("Paging library overview")) },
+                        CallToolRequestParams(
+                            name = "search_docs",
+                            arguments = buildJsonObject { put("query", JsonPrimitive("Paging library overview")) },
+                            meta = RequestMeta(JsonObject(emptyMap())),
+                        ),
                     ),
                 )
 
@@ -70,8 +75,11 @@ class McpServerIntegrationTest {
             val result =
                 tool.handler.invoke(
                     CallToolRequest(
-                        name = "search_docs",
-                        arguments = JsonObject(emptyMap()),
+                        CallToolRequestParams(
+                            name = "search_docs",
+                            arguments = JsonObject(emptyMap()),
+                            meta = RequestMeta(JsonObject(emptyMap())),
+                        ),
                     ),
                 )
 
@@ -108,6 +116,8 @@ class McpServerIntegrationTest {
                 ): List<ScoredChunk> = results
 
                 override suspend fun deleteByDocumentId(documentId: Int) = error("not expected")
+
+                override suspend fun count(): Long = results.size.toLong()
             }
 
         return SearchService(

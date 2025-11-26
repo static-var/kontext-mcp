@@ -130,6 +130,8 @@ class SearchServiceTest {
         override suspend fun deleteByDocumentId(documentId: Int) {
             error("Not expected in tests")
         }
+
+        override suspend fun count(): Long = results.size.toLong()
     }
 
     private class NoOpReranker : RerankerService {
