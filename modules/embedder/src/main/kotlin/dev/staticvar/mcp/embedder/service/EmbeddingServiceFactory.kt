@@ -1,9 +1,11 @@
 package dev.staticvar.mcp.embedder.service
 
+import dev.staticvar.mcp.embedder.service.model.EmbeddingBatchRequest
 import dev.staticvar.mcp.embedder.tokenizer.HuggingFaceEmbeddingTokenizer
 import dev.staticvar.mcp.embedder.util.ModelArtifacts
 import dev.staticvar.mcp.embedder.util.ModelDownloader
 import dev.staticvar.mcp.shared.config.EmbeddingConfig
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 
@@ -30,10 +32,10 @@ object EmbeddingServiceFactory {
 
         // Warm-up
         try {
-            service.embed(dev.staticvar.mcp.embedder.service.model.EmbeddingBatchRequest(listOf("warm up")))
+            service.embed(EmbeddingBatchRequest(listOf("warm up")))
         } catch (e: Exception) {
             // Log warning but don't fail startup
-            io.github.oshai.kotlinlogging.KotlinLogging.logger {}.warn(e) { "Embedding service warm-up failed" }
+            KotlinLogging.logger {}.warn(e) { "Embedding service warm-up failed" }
         }
 
         return service

@@ -71,6 +71,11 @@ private class FakeTokenizer(private val maxTokens: Int) : EmbeddingTokenizer {
         )
     }
 
+    override fun tokenizePair(
+        text1: String,
+        text2: String,
+    ): TokenizedInput = tokenize("$text1 $text2")
+
     override fun close() {}
 }
 
